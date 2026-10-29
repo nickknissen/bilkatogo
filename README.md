@@ -247,6 +247,7 @@ Order Status sensor shows the status.
 | `bilkatogo.add_to_cart` | `article_number`, `quantity` (default 1) | Optional: the Cart, with its Cart Lines (Product, Article Number, quantity, Price, line total), total, Deposit, Service Fee, Packaging, Discount, Pickup Point and Bilka's warnings |
 | `bilkatogo.remove_from_cart` | `article_number`, `quantity` (default: all of it) | Optional: the Cart, as for `add_to_cart` |
 | `bilkatogo.search` | `query`, `limit` (default 10) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
+| `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
 
 `add_to_cart` adds to what is already in the Cart and `remove_from_cart` takes `quantity` off
 it, or the whole Cart Line without one; neither places an Order. `search` searches at the

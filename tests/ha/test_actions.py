@@ -18,6 +18,7 @@ ACTIONS = [
     ("add_to_cart", {"article_number": "19753"}),
     ("remove_from_cart", {"article_number": "18381"}),
     ("search", {"query": "skyr"}),
+    ("get_cart", {}),
 ]
 
 
@@ -128,6 +129,39 @@ async def test_remove_from_cart_without_a_quantity_drops_the_cart_line(
     [request] = cart.calls("change_line_count")
     assert request.url.params["count"] == "0"
     assert response is None
+
+
+async def test_get_cart_returns_the_cart_without_changing_it(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(hass, "get_cart", {})
+
+    assert cart.calls("change_line_count") == []
+    assert [(line["article_number"], line["quantity"]) for line in response["lines"]] == [
+        ("18381", 10),
+        ("18364", 1),
+        ("19789", 1),
+        ("185370", 1),
+        ("75191", 1),
+    ]
+    assert response["lines"][0] == {
+        "product": "Bananer",
+        "article_number": "18381",
+        "quantity": 10,
+        "price": 2.75,
+        "line_total": 25.0,
+    }
+    assert {key: value for key, value in response.items() if key != "lines"} == {
+        "total": 127.0,
+        "deposit": 0.0,
+        "service_fee": 39.0,
+        "packaging": 0.0,
+        "discount": 9.5,
+        "pickup_point": "Bilka Vejle",
+        "warnings": [],
+    }
 
 
 async def test_search_returns_products_at_the_carts_store(
@@ -315,6 +349,7 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         ("add_to_cart", ["config_entry_id", "article_number", "quantity"]),
         ("remove_from_cart", ["config_entry_id", "article_number", "quantity"]),
         ("search", ["config_entry_id", "query", "limit"]),
+        ("get_cart", ["config_entry_id"]),
     ]:
         assert services[f"{prefix}.services.{action}.name"]
         assert services[f"{prefix}.services.{action}.description"]

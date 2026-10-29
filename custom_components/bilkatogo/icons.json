@@ -53,6 +53,9 @@
     },
     "search": {
       "service": "mdi:magnify"
+    },
+    "get_cart": {
+      "service": "mdi:cart"
     }
   }
 }
