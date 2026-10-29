@@ -50,3 +50,10 @@ search:
         number:
           min: 1
           mode: box
+
+get_cart:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: bilkatogo

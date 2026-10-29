@@ -264,6 +264,16 @@
           "description": "Det højeste antal varer, der returneres."
         }
       }
+    },
+    "get_cart": {
+      "name": "Hent kurv",
+      "description": "Returnerer indholdet af din BilkaToGo-kurv med total uden at ændre den.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
+        }
+      }
     }
   }
 }

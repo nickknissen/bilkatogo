@@ -264,6 +264,16 @@
           "description": "The most products to return."
         }
       }
+    },
+    "get_cart": {
+      "name": "Get cart",
+      "description": "Returns what is in your BilkaToGo cart, with its total, without changing it.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The BilkaToGo account to use. Only needed when more than one is added."
+        }
+      }
     }
   }
 }

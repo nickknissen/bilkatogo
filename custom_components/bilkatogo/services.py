@@ -30,6 +30,7 @@ from .coordinator import BilkaToGoConfigEntry
 SERVICE_ADD_TO_CART = "add_to_cart"
 SERVICE_REMOVE_FROM_CART = "remove_from_cart"
 SERVICE_SEARCH = "search"
+SERVICE_GET_CART = "get_cart"
 
 ATTR_ARTICLE_NUMBER = "article_number"
 ATTR_QUANTITY = "quantity"
@@ -66,6 +67,8 @@ SEARCH_SCHEMA = probatio.Schema(
         ),
     }
 )
+
+GET_CART_SCHEMA = probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
 
 
 def _entry(call: ServiceCall) -> BilkaToGoConfigEntry:
@@ -192,6 +195,10 @@ async def _search(call: ServiceCall) -> ServiceResponse:
     return {"products": [_product_response(product) for product in products]}
 
 
+async def _get_cart(call: ServiceCall) -> ServiceResponse:
+    return _cart_response(await _run(call, lambda client: client.get_cart()))
+
+
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
@@ -213,5 +220,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_SEARCH,
         _search,
         schema=SEARCH_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_CART,
+        _get_cart,
+        schema=GET_CART_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
