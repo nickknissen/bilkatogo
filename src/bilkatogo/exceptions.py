@@ -31,9 +31,11 @@ class OrderNotFoundError(BilkaToGoError):
 
 
 class CartChangeRejectedError(BilkaToGoError):
-    """Bilka applied a different quantity than asked to a Cart Line; the message is Bilka's.
+    """Bilka refused a change to a Cart Line, or applied a different quantity than asked;
+    the message is Bilka's.
 
-    `applied` is None when Bilka's answer did not say which quantity it applied.
+    `applied` is None when Bilka refused the change outright or did not say which quantity it
+    applied.
     """
 
     def __init__(

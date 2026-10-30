@@ -103,6 +103,24 @@ async def test_a_change_answer_without_the_applied_quantity_is_rejected(
 
 
 @pytest.mark.asyncio
+async def test_an_unavailable_product_is_rejected_with_bilkas_message_without_logging_in_again(
+    logged_in_cart: FakeBilka,
+) -> None:
+    logged_in_cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
+
+    with pytest.raises(
+        CartChangeRejectedError, match="er desværre ikke aktuelt tilgængeligt"
+    ) as rejected:
+        await change(logged_in_cart, lambda client: client.set_cart_quantity("88672", 3))
+
+    assert rejected.value.article_number == "88672"
+    assert rejected.value.requested == 3
+    assert rejected.value.applied is None
+    assert len(logged_in_cart.calls("change_line_count")) == 1
+    assert len(logged_in_cart.calls("gigya_login")) == 1
+
+
+@pytest.mark.asyncio
 async def test_add_to_cart_adds_to_the_quantity_of_an_existing_cart_line(
     logged_in_cart: FakeBilka,
 ) -> None:
