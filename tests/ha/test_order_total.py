@@ -7,7 +7,7 @@ from homeassistant.helpers.translation import async_get_translations
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.bilkatogo.const import DOMAIN
-from tests.fake_bilka import FakeBilka
+from tests.fake_bilka import FakeBilka, load_fixture
 from tests.ha.conftest import SetupIntegration
 
 ORDER_NUMBER = "900000000004"
@@ -84,6 +84,18 @@ async def test_order_total_from_received_to_picked_up(
 
     assert len(bilka.calls("order_history")) == 3
     assert len(bilka.calls("order_details")) == 1
+
+
+async def test_received_order_total_is_bilkas_estimate(
+    hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
+) -> None:
+    bilka.orders = load_fixture("order_history_received.json")["orders"]
+    entry = await setup_integration()
+
+    state = order_total(hass, entry)
+    assert state.state == "859.98"
+    assert state.attributes["ordered_total"] == 876.53
+    assert state.attributes["difference"] == -16.55
 
 
 async def test_order_total_is_translated_in_danish_and_english(

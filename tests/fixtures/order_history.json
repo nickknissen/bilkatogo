@@ -9,7 +9,7 @@
       "deliveryInterval": {"start": "16:00:00", "end": "18:00:00"},
       "ordered": {"date": "2026-11-01", "time": "20:15:00", "channel": "Web"},
       "orderedPrice": 45600,
-      "packedPrice": 0,
+      "packedPrice": 44900,
       "pickupzone": {
         "location": "Bilka Eksempelby",
         "address": "Testvej 1",

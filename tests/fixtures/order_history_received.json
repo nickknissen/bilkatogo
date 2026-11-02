@@ -1,0 +1,57 @@
+{
+  "limit": "5",
+  "offset": 0,
+  "orders": [
+    {
+      "orderId": "900000000001",
+      "uncollected_fee": null,
+      "deliveryDate": "2026-11-03",
+      "displayDeliveryDate": "2026-11-03",
+      "deliveryMessage": "Tir. 03/11. kl. 14:00 - 16:00",
+      "content": "Rosiner, Tørfoder, Powermaker knapcelle",
+      "totalProductAmount": 53,
+      "deliveryInterval": {
+        "start": "14:00:00",
+        "end": "16:00:00"
+      },
+      "ordered": {
+        "channel": "Android App",
+        "date": "2026-11-02",
+        "time": "19:11:36"
+      },
+      "pickupzone": {
+        "recipient_name": "",
+        "location": "Bilka Vejle",
+        "zipCode": "7100",
+        "city": "Vejle",
+        "floor": null,
+        "door": null,
+        "address": "Solkilde Alle 2",
+        "youtube_id": "0x1lov-hdMI",
+        "lat": "55.724723",
+        "lng": "9.581144",
+        "order_pickup_code": "12345678",
+        "facility": 3,
+        "home_delivery": false,
+        "deliveryPointId": null,
+        "deliveryPointText": null,
+        "deliveryComment": null,
+        "doorcode": null
+      },
+      "orderedPrice": 87653,
+      "packedPrice": 85998,
+      "status": "Bestilt",
+      "name": "Bilka Vejle",
+      "address": "Solkilde Alle 2",
+      "zipcity": "7100 Vejle",
+      "muah": false,
+      "delivered": false,
+      "organisation": null
+    }
+  ],
+  "total": 314,
+  "eid": -1,
+  "uid": 900001,
+  "tid": "00000000-0000-0000-0000-000000000000",
+  "info_object": null
+}
