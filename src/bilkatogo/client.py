@@ -36,7 +36,7 @@ from .exceptions import (
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
-from .models import Cart, Order, OrderDetails, PickupPoint, Product, current_order
+from .models import Cart, Order, OrderDetails, OrderHistory, PickupPoint, Product
 from .token_storage import TokenStorage
 
 
@@ -146,22 +146,22 @@ class BilkaToGoClient:
             details, ordered_total=summary.ordered_total if summary else None
         )
 
+    async def get_order_history(self) -> OrderHistory:
+        return OrderHistory(await self.get_orders(limit=CURRENT_ORDER_SCAN_LIMIT))
+
     async def get_current_order(self) -> OrderDetails | None:
-        order = await self._current_order()
+        order = (await self.get_order_history()).current_order
         return await self.get_order(order) if order else None
 
     async def get_order_json(self, order: str | Order) -> dict[str, Any]:
         return await self._shop("GET", "shop/v7/OrderDetails", {"orderId": _order_number(order)})
 
     async def get_current_order_json(self) -> dict[str, Any] | None:
-        order = await self._current_order()
+        order = (await self.get_order_history()).current_order
         return await self.get_order_json(order) if order else None
 
-    async def _current_order(self) -> Order | None:
-        return current_order(await self.get_orders(limit=CURRENT_ORDER_SCAN_LIMIT))
-
     async def _find_order(self, order_number: str) -> Order | None:
-        orders = await self.get_orders(limit=CURRENT_ORDER_SCAN_LIMIT)
+        orders = (await self.get_order_history()).orders
         return next((order for order in orders if order.order_number == order_number), None)
 
     async def get_pickup_points(self) -> list[PickupPoint]:

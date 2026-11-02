@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
@@ -133,6 +132,11 @@ class Order(BilkaDataClass):
             content=data.get("content") or "",
         )
 
+    @property
+    def finished(self) -> bool:
+        """Nothing more will happen to this Order."""
+        return self.status in _FINISHED_STATUSES
+
 
 def _ordered_at(ordered: dict[str, Any] | None) -> datetime | None:
     if not ordered:
@@ -146,19 +150,26 @@ def _ordered_at(ordered: dict[str, Any] | None) -> datetime | None:
     return ordered_at.replace(tzinfo=BILKA_TIME_ZONE)
 
 
-FINISHED_STATUSES = frozenset(
+_FINISHED_STATUSES = frozenset(
     {OrderStatus.PICKED_UP, OrderStatus.NOT_COLLECTED, OrderStatus.CANCELLED, OrderStatus.SOLD_OUT}
 )
 
 
-def current_order(orders: Iterable[Order]) -> Order | None:
-    history = list(orders)
-    unfinished = [order for order in history if order.status not in FINISHED_STATUSES]
-    if unfinished:
-        return min(unfinished, key=lambda order: _slot_start(order, _LATEST))
-    if not history:
-        return None
-    return max(history, key=lambda order: _slot_start(order, _EARLIEST))
+@dataclass(frozen=True)
+class OrderHistory:
+    """The customer's latest placed Orders, in the order Bilka lists them."""
+
+    orders: list[Order]
+
+    @property
+    def current_order(self) -> Order | None:
+        """The unfinished Order with the earliest Pickup Slot, else the latest finished one."""
+        unfinished = [order for order in self.orders if not order.finished]
+        if unfinished:
+            return min(unfinished, key=lambda order: _slot_start(order, _LATEST))
+        if not self.orders:
+            return None
+        return max(self.orders, key=lambda order: _slot_start(order, _EARLIEST))
 
 
 _EARLIEST = datetime.min.replace(tzinfo=UTC)

@@ -19,8 +19,16 @@ One Product with its quantity in the Cart, with its Price and line total. Become
 _Avoid_: Basket item, Order Line (that belongs to a placed Order)
 
 **Current Order**:
-The unfinished Order with the earliest Pickup Slot or, when every Order is finished, the most recently finished one.
+The unfinished Order with the earliest Pickup Slot or, when every Order is finished, the most recently finished one. Chosen from the Order History.
 _Avoid_: Active order, latest order, open order
+
+**Order History**:
+The customer's most recently placed Orders, the ones the Current Order is chosen from.
+_Avoid_: Order list, orders
+
+**Finished Order**:
+An Order nothing more will happen to: its Order Status is Picked Up, Not Collected, Cancelled or Sold Out.
+_Avoid_: Closed order, completed order, done
 
 **Order Number**:
 The 12-digit identifier Bilka shows as `#902852320314`.
