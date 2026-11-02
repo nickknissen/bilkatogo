@@ -26,6 +26,10 @@ _LOGGER = logging.getLogger(__name__)
 
 SUBSTITUTED_TAGLINE = "erstattet"
 
+# The Missing Item shape is inferred from a synthetic fixture. Every Missing Item is logged with
+# its raw line until a real capture confirms the shape; then only the unclassified log stays.
+MISSING_ITEM_SHAPE_ISSUE = "https://github.com/nickknissen/bilkatogo/issues/27"
+
 
 @dataclass
 class Substitution(BilkaDataClass):
@@ -38,13 +42,9 @@ class Substitution(BilkaDataClass):
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Substitution | None:
-        if not data.get("strikethrough") or data.get("tagline") != SUBSTITUTED_TAGLINE:
-            return None
-        children = data.get("children") or []
-        if not children:
-            return None
-        replacement = children[0]
+    def from_dict(cls, data: dict[str, Any]) -> Substitution:
+        """Build from an Order Line that `_classify` found to be a Substitution."""
+        replacement = data["children"][0]
         return cls(
             _raw=data,
             original_product=_product_name(data),
@@ -65,11 +65,8 @@ class MissingItem(BilkaDataClass):
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> MissingItem | None:
-        if not data.get("unavailable_reason") or data.get("replacement") or data.get("children"):
-            return None
-        if Substitution.from_dict(data) is not None:
-            return None
+    def from_dict(cls, data: dict[str, Any]) -> MissingItem:
+        """Build from an Order Line that `_classify` found to be a Missing Item."""
         ordered = int(data.get("quantity") or 0)
         missing = _quantity(data.get("unavailable_quantity"))
         return cls(
@@ -93,7 +90,9 @@ class OrderLine(BilkaDataClass):
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], category: str = "") -> OrderLine:
+    def from_dict(
+        cls, data: dict[str, Any], category: str = "", *, substituted: bool = False
+    ) -> OrderLine:
         return cls(
             _raw=data,
             category=category,
@@ -101,7 +100,7 @@ class OrderLine(BilkaDataClass):
             name=_product_name(data),
             quantity=int(data.get("quantity") or 0),
             amount=kroner(data.get("amount")),
-            substituted=Substitution.from_dict(data) is not None,
+            substituted=substituted,
             unavailable_reason=data.get("unavailable_reason") or "",
         )
 
@@ -138,17 +137,35 @@ class OrderDetails(BilkaDataClass):
             for block in group.get("lines") or []
             for line in block.get("orderlines") or []
         ]
-        lines = [OrderLine.from_dict(line, category) for category, line in raw_lines]
         order_number = str(data["orderId"])
-        for line in lines:
-            if line.unavailable_reason and not line.substituted:
+        lines: list[OrderLine] = []
+        substitutions: list[Substitution] = []
+        missing_items: list[MissingItem] = []
+        for category, raw_line in raw_lines:
+            kind = _classify(raw_line)
+            if isinstance(kind, Substitution):
+                substitutions.append(kind)
+            elif isinstance(kind, MissingItem):
+                missing_items.append(kind)
                 _LOGGER.warning(
-                    "Order %s: %s is unavailable (%s) and not substituted: %s",
+                    "Order %s: %s is a Missing Item whose shape is not yet confirmed; "
+                    "please share this line on %s: %s",
                     order_number,
-                    line.name,
-                    line.unavailable_reason,
-                    json.dumps(line._raw, ensure_ascii=False, default=str),
+                    kind.product,
+                    MISSING_ITEM_SHAPE_ISSUE,
+                    _json(raw_line),
                 )
+            elif raw_line.get("unavailable_reason"):
+                _LOGGER.warning(
+                    "Order %s: %s is unavailable (%s) but neither a Substitution nor a "
+                    "Missing Item: %s",
+                    order_number,
+                    _product_name(raw_line),
+                    raw_line.get("unavailable_reason"),
+                    _json(raw_line),
+                )
+            substituted = isinstance(kind, Substitution)
+            lines.append(OrderLine.from_dict(raw_line, category, substituted=substituted))
         return cls(
             _raw=data,
             order_number=order_number,
@@ -166,15 +183,27 @@ class OrderDetails(BilkaDataClass):
             delivery_fee=kroner(stat.get("delivery_price")),
             discount=discount(stat),
             lines=lines,
-            substitutions=[
-                substitution
-                for _, line in raw_lines
-                if (substitution := Substitution.from_dict(line)) is not None
-            ],
-            missing_items=[
-                item for _, line in raw_lines if (item := MissingItem.from_dict(line)) is not None
-            ],
+            substitutions=substitutions,
+            missing_items=missing_items,
         )
+
+
+def _classify(data: dict[str, Any]) -> Substitution | MissingItem | None:
+    """Decide once what an Order Line is: a Substitution, a Missing Item, or neither.
+
+    A Substitution is struck through, tagged "erstattet" and has its Replacement Product as
+    a child. A Missing Item is unavailable with no Replacement Product and no child.
+    """
+    children = data.get("children")
+    if data.get("strikethrough") and data.get("tagline") == SUBSTITUTED_TAGLINE and children:
+        return Substitution.from_dict(data)
+    if data.get("unavailable_reason") and not data.get("replacement") and not children:
+        return MissingItem.from_dict(data)
+    return None
+
+
+def _json(data: dict[str, Any]) -> str:
+    return json.dumps(data, ensure_ascii=False, default=str)
 
 
 def _product_name(data: dict[str, Any]) -> str:
