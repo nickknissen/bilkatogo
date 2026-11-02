@@ -56,6 +56,11 @@ asyncio.run(main())
 - `login()`, `get_orders(limit=5)`, `get_order(order_number)` and `get_current_order()` are the
   public operations. The client logs in on demand, refreshes the session before it expires and
   logs in again when Bilka rejects it.
+- `get_order_history()` returns the `OrderHistory`: the latest 20 Orders in `orders` and the
+  Current Order among them in `current_order` (`None` without Orders), from one look at the
+  order history. Use it when you need both, instead of `get_orders()` plus
+  `get_current_order()`. `Order.finished` tells whether nothing more will happen to an Order
+  (Picked Up, Not Collected, Cancelled or Sold Out).
 - `token_storage` is any `TokenStorage` (async `load()` and `save(data)`). `FileTokenStorage`
   stores the session in a JSON file.
 - Errors derive from `BilkaToGoError`: `InvalidCredentialsError`, `BilkaUnreachableError`,

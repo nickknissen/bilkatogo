@@ -243,3 +243,25 @@ async def test_pickup_slot_times_are_in_copenhagen(
     assert order.pickup_slot is not None
     assert order.pickup_slot.starts_at.isoformat() == starts_at
     assert order.pickup_slot.ends_at.isoformat() == ends_at
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status_code", "finished"),
+    [
+        ("Ubehandlet", False),
+        ("Bestilt", False),
+        ("Pakket", False),
+        ("Faktureret", True),
+        ("Uafhentet", True),
+        ("Annulleret", True),
+        ("Fuldt udsolgt", True),
+        ("Noget nyt", False),
+    ],
+)
+async def test_an_order_is_finished_once_nothing_more_will_happen_to_it(
+    bilka: FakeBilka, status_code: str, finished: bool
+) -> None:
+    order = await fetch_one(bilka, synthetic_order(status=status_code))
+
+    assert order.finished is finished

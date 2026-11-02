@@ -9,15 +9,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from bilkatogo import (
-    CURRENT_ORDER_SCAN_LIMIT,
-    FINISHED_STATUSES,
     BilkaToGoClient,
     BilkaToGoError,
     InvalidCredentialsError,
     Order,
     OrderDetails,
     OrderStatus,
-    current_order,
 )
 
 from .announcer import announcers
@@ -31,7 +28,7 @@ type BilkaToGoConfigEntry = ConfigEntry[BilkaToGoCoordinator]
 
 
 def polling_interval(order: Order | None, now: datetime) -> timedelta:
-    if order is None or order.pickup_slot is None or order.status in FINISHED_STATUSES:
+    if order is None or order.pickup_slot is None or order.finished:
         return UPDATE_INTERVAL
     until_fast = order.pickup_slot.starts_at - FAST_UPDATE_LEAD_TIME - now
     if until_fast <= timedelta(0):
@@ -70,8 +67,8 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
 
     async def _async_update_data(self) -> BilkaToGoData:
         try:
-            orders = await self.client.get_orders(limit=CURRENT_ORDER_SCAN_LIMIT)
-            order = current_order(orders)
+            history = await self.client.get_order_history()
+            order = history.current_order
             details = await self._async_fetch_details(order)
         except InvalidCredentialsError as err:
             raise ConfigEntryAuthFailed(
@@ -90,7 +87,9 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
         if details:
             for announcer in self.announcers:
                 announced[announcer.event_type] = await announcer.async_announce(details)
-        return BilkaToGoData(order=order, details=details, orders=orders, announced=announced)
+        return BilkaToGoData(
+            order=order, details=details, orders=history.orders, announced=announced
+        )
 
     async def _async_fetch_details(self, order: Order | None) -> OrderDetails | None:
         """Fetch Order Details once the Current Order is Packed or later.

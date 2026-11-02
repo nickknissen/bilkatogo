@@ -2,7 +2,7 @@ from datetime import date, time
 
 import pytest
 
-from bilkatogo import BilkaToGoClient, OrderDetails, OrderStatus
+from bilkatogo import BilkaToGoClient, OrderDetails, OrderHistory, OrderStatus
 from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, load_fixture
 
 
@@ -27,6 +27,61 @@ async def current(bilka: FakeBilka) -> OrderDetails | None:
         BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
     ):
         return await client.get_current_order()
+
+
+async def order_history(bilka: FakeBilka) -> OrderHistory:
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        return await client.get_order_history()
+
+
+@pytest.mark.asyncio
+async def test_order_history_carries_the_scanned_orders_and_their_current_order(
+    bilka: FakeBilka,
+) -> None:
+    history(
+        bilka,
+        ("900000000003", "Bestilt", "2026-11-05", "10:00:00"),
+        ("900000000002", "Pakket", "2026-11-03", "16:00:00"),
+        ("900000000001", "Faktureret", "2026-10-27", "12:00:00"),
+    )
+
+    found = await order_history(bilka)
+
+    assert [order.order_number for order in found.orders] == [
+        "900000000003",
+        "900000000002",
+        "900000000001",
+    ]
+    assert found.current_order is not None
+    assert found.current_order.order_number == "900000000002"
+    assert len(bilka.calls("order_history")) == 1
+    assert bilka.calls("order_details") == []
+
+
+@pytest.mark.asyncio
+async def test_an_empty_order_history_has_no_current_order(bilka: FakeBilka) -> None:
+    bilka.orders = []
+
+    found = await order_history(bilka)
+
+    assert found.orders == []
+    assert found.current_order is None
+
+
+@pytest.mark.asyncio
+async def test_order_history_holds_the_latest_20_orders(bilka: FakeBilka) -> None:
+    history(
+        bilka,
+        *[(f"9000000000{n:02}", "Faktureret", "2026-10-27", "12:00:00") for n in range(25, 0, -1)],
+    )
+
+    found = await order_history(bilka)
+
+    assert [order.order_number for order in found.orders][:1] == ["900000000025"]
+    assert len(found.orders) == 20
 
 
 @pytest.mark.asyncio
