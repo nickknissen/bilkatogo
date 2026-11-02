@@ -76,7 +76,8 @@ class FakeBilka:
     method of the same name answers, which behaves like the real backend for one account.
 
     Like Bilka, LoginJWT hands out a `cart` cookie and, when a login presents one it handed
-    out before, replaces the Cart with the Cart as it was at that earlier login.
+    out before, replaces the Cart with the Cart as it was at that earlier login. The website
+    calls it; the client must not.
     """
 
     def __init__(self, email: str = EMAIL, password: str = PASSWORD) -> None:
@@ -140,11 +141,10 @@ class FakeBilka:
         return scripted(request)
 
     def has_shop_session(self, request: httpx.Request) -> bool:
-        sent = request.headers.get("cookie", "")
+        """Like Bilka, the shop accepts Gigya's JWT on its own, without LoginJWT or cookies."""
         return (
             request.headers.get("jwt_token") == load_fixture("gigya_jwt.json")["id_token"]
             and request.url.params.get("u") == "w"
-            and f"PHPSESSID={SESSION_COOKIES['PHPSESSID']}" in sent
         )
 
     def gigya_login(self, request: httpx.Request) -> httpx.Response:

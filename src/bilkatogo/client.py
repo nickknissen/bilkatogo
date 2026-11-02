@@ -12,8 +12,6 @@ from .const import (
     ALGOLIA_QUERIES_URL,
     ALGOLIA_SEARCH_KEY,
     API_BASE_URL,
-    API_HOST,
-    CART_COOKIE,
     CART_PARAMS,
     CURRENT_ORDER_SCAN_LIMIT,
     GIGYA_API_KEY,
@@ -108,24 +106,15 @@ class BilkaToGoClient:
         if self._password is None:
             raise InvalidCredentialsError("A password is needed to log in")
         login_token = await self._gigya_login(self._password)
+        # The shop accepts Gigya's JWT on its own. The website also calls auth/LoginJWT, which
+        # replaces the account's Cart with the one under its `cart` cookie, so we never do.
         jwt = await self._gigya_jwt(login_token)
         expires_at = datetime.now(UTC) + timedelta(seconds=JWT_LIFETIME_SECONDS)
-        self._http.cookies.delete(CART_COOKIE)
-        response = await self._request(
-            "POST", f"{API_BASE_URL}/auth/LoginJWT", params=WEB_PARAMS, headers={"jwt_token": jwt}
-        )
-        if response.status_code != 200:
-            raise UnexpectedResponseError(f"Shop login failed with HTTP {response.status_code}")
         self._jwt = jwt
         self._jwt_expires_at = expires_at
         if self._token_storage is not None:
             await self._token_storage.save(
-                {
-                    "email": self._email,
-                    "jwt": jwt,
-                    "jwt_expires_at": expires_at.isoformat(),
-                    "cookies": dict(response.cookies),
-                }
+                {"email": self._email, "jwt": jwt, "jwt_expires_at": expires_at.isoformat()}
             )
         return jwt
 
@@ -329,8 +318,6 @@ class BilkaToGoClient:
             jwt = session["jwt"]
         except KeyError, TypeError, ValueError:
             return None
-        for name, value in (session.get("cookies") or {}).items():
-            self._http.cookies.set(name, value, domain=API_HOST)
         self._jwt = jwt
         self._jwt_expires_at = expires_at
         return self._valid_jwt()

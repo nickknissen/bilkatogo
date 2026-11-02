@@ -35,7 +35,7 @@ async def test_unauthorized_shop_call_logs_in_again_and_retries_once(
     assert len(orders) == 2
     assert len(bilka.calls("order_history")) == 2
     assert len(bilka.calls("gigya_login")) == 2
-    assert len(bilka.calls("login_jwt")) == 2
+    assert bilka.calls("login_jwt") == []
 
 
 @pytest.mark.asyncio
@@ -56,7 +56,7 @@ async def test_logging_in_again_keeps_cart_changes_made_elsewhere(
     ):
         cart = await client.get_cart()
 
-    assert len(logged_in_cart.calls("login_jwt")) == 3
+    assert logged_in_cart.calls("login_jwt") == []
     assert {line.article_number: line.quantity for line in cart.lines}["18364"] == 3
 
 
@@ -221,9 +221,9 @@ async def test_stored_session_about_to_expire_is_renewed_before_the_shop_call(
             "Could not reach accounts.eu1.gigya.com: ConnectTimeout: fake: connect timed out",
         ),
         (
-            "login_jwt",
+            "gigya_jwt",
             httpx.ConnectError("fake: connection reset"),
-            "Could not reach api.bilkatogo.dk: ConnectError: fake: connection reset",
+            "Could not reach accounts.eu1.gigya.com: ConnectError: fake: connection reset",
         ),
     ],
 )
@@ -255,7 +255,7 @@ HTML_ERROR = "<html><body>Bad Gateway</body></html>"
         ("gigya_login", httpx.Response(502, text=HTML_ERROR)),
         ("gigya_login", httpx.Response(200, json={"errorCode": 0})),
         ("gigya_jwt", httpx.Response(500, json={"errorCode": 500001, "errorMessage": "fake"})),
-        ("login_jwt", httpx.Response(500, text="Internal Server Error")),
+        ("gigya_jwt", httpx.Response(500, text="Internal Server Error")),
     ],
 )
 async def test_unexpected_answers_raise_unexpected_response(

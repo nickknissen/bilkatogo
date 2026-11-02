@@ -240,8 +240,8 @@ def test_orders_when_there_are_none(invoke, bilka: FakeBilka) -> None:
     ("route", "failure", "message"),
     [
         ("gigya_login", httpx.ConnectError("fake: refused"), "Could not reach Bilka"),
-        ("login_jwt", httpx.ReadTimeout("fake: timed out"), "Could not reach Bilka"),
-        ("login_jwt", httpx.Response(503, text="<html>Down</html>"), "Bilka answered unexpectedly"),
+        ("gigya_jwt", httpx.ReadTimeout("fake: timed out"), "Could not reach Bilka"),
+        ("gigya_jwt", httpx.Response(503, text="<html>Down</html>"), "Bilka answered unexpectedly"),
     ],
 )
 def test_failures_print_a_clear_message_and_exit_non_zero(

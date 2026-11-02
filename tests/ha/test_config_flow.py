@@ -56,7 +56,7 @@ async def test_bilka_unreachable_shows_cannot_connect(
 
 
 async def test_unexpected_answer_shows_unknown(hass: HomeAssistant, bilka: FakeBilka) -> None:
-    bilka.script("login_jwt", httpx.Response(500, text="oops"))
+    bilka.script("gigya_jwt", httpx.Response(500, text="oops"))
 
     result = await start_flow(hass)
 
