@@ -104,9 +104,10 @@ def orderlines(bilka: FakeBilka, order_number: str) -> list[dict]:
 
 
 @pytest.mark.asyncio
-async def test_unavailable_line_that_is_not_a_substitution_is_logged(
+async def test_a_missing_item_is_logged_with_its_raw_line_until_its_shape_is_confirmed(
     bilka: FakeBilka, caplog: pytest.LogCaptureFixture
 ) -> None:
+    # The Missing Item shape is synthetic until a real capture replaces it (#27).
     orderlines(bilka, "900000000002")[1]["unavailable_reason"] = "Udsolgt"
 
     with caplog.at_level(logging.WARNING, logger="bilkatogo"):
@@ -114,12 +115,36 @@ async def test_unavailable_line_that_is_not_a_substitution_is_logged(
 
     [record] = caplog.records
     assert record.levelno == logging.WARNING
+    assert "Missing Item" in record.getMessage()
+    assert "issues/27" in record.getMessage()
     assert "Havregryn" in record.getMessage()
     assert "900000000002" in record.getMessage()
     raw_line = orderlines(bilka, "900000000002")[1]
     assert json.dumps(raw_line, ensure_ascii=False) in record.getMessage()
     assert details.lines[1].unavailable_reason == "Udsolgt"
+    assert [item.product for item in details.missing_items] == ["Havregryn"]
     assert details.substitutions == []
+
+
+@pytest.mark.asyncio
+async def test_an_unavailable_line_that_is_neither_is_logged_as_unclassified(
+    bilka: FakeBilka, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Looks like a Substitution (it has a child) but lacks Bilka's "erstattet" tagline.
+    line = orderlines(bilka, "900000000001")[0]
+    line["unavailable_reason"] = "Udsolgt"
+    line["tagline"] = None
+
+    with caplog.at_level(logging.WARNING, logger="bilkatogo"):
+        details = await fetch(bilka, "900000000001")
+
+    [record] = caplog.records
+    assert "neither a Substitution nor a Missing Item" in record.getMessage()
+    assert "Æbler" in record.getMessage()
+    assert json.dumps(line, ensure_ascii=False) in record.getMessage()
+    assert details.lines[0].substituted is False
+    assert len(details.substitutions) == 1
+    assert details.missing_items == []
 
 
 @pytest.mark.asyncio
