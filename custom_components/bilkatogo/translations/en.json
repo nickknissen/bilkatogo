@@ -210,6 +210,15 @@
       "message": "Bilka could not complete the action: {error}"
     }
   },
+  "selector": {
+    "search_sort": {
+      "options": {
+        "relevance": "Relevance",
+        "price": "Price",
+        "unit_price": "Unit price"
+      }
+    }
+  },
   "services": {
     "add_to_cart": {
       "name": "Add to cart",
@@ -262,6 +271,22 @@
         "limit": {
           "name": "Limit",
           "description": "The most products to return."
+        },
+        "in_stock": {
+          "name": "In stock",
+          "description": "Only products in stock at the store."
+        },
+        "on_offer": {
+          "name": "On offer",
+          "description": "Only products with an offer or a multibuy offer at the store."
+        },
+        "in_leaflet": {
+          "name": "In the leaflet",
+          "description": "Only products in this week's Bilka leaflet."
+        },
+        "sort": {
+          "name": "Sort",
+          "description": "Orders the best matches, up to the limit, by price or unit price, counting offers."
         }
       }
     },

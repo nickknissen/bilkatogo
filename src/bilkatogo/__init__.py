@@ -26,6 +26,7 @@ from .models import (
     PickupPoint,
     PickupSlot,
     Product,
+    SearchSort,
     Substitution,
 )
 from .token_storage import FileTokenStorage, TokenStorage
@@ -58,6 +59,7 @@ __all__ = [
     "PickupSlot",
     "Product",
     "REQUEST_TIMEOUT_SECONDS",
+    "SearchSort",
     "Substitution",
     "TokenStorage",
     "UnexpectedResponseError",

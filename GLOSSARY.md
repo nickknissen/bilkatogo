@@ -152,3 +152,7 @@ _Avoid_: Bundle, mix-and-match
 **Unit Price**:
 The Price per unit of measure, e.g. 24,95 kr/kg, used to compare Products.
 _Avoid_: Kilo price, comparison price
+
+**Leaflet**:
+Bilka's weekly printed and online offer leaflet, "Bilka avisen". Whether a Product is in this week's Leaflet is one flag for all Stores, Algolia's `isInCurrentLeaflet`; its Offers still differ per Store.
+_Avoid_: Flyer, catalogue, tilbudsavis (use only as the Danish alias)

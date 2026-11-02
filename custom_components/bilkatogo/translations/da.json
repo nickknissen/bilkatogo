@@ -210,6 +210,15 @@
       "message": "Bilka kunne ikke gennemføre handlingen: {error}"
     }
   },
+  "selector": {
+    "search_sort": {
+      "options": {
+        "relevance": "Relevans",
+        "price": "Pris",
+        "unit_price": "Enhedspris"
+      }
+    }
+  },
   "services": {
     "add_to_cart": {
       "name": "Læg i kurv",
@@ -262,6 +271,22 @@
         "limit": {
           "name": "Grænse",
           "description": "Det højeste antal varer, der returneres."
+        },
+        "in_stock": {
+          "name": "På lager",
+          "description": "Kun varer, der er på lager i butikken."
+        },
+        "on_offer": {
+          "name": "På tilbud",
+          "description": "Kun varer med et tilbud eller et mixtilbud i butikken."
+        },
+        "in_leaflet": {
+          "name": "I avisen",
+          "description": "Kun varer i denne uges Bilka-avis."
+        },
+        "sort": {
+          "name": "Sortering",
+          "description": "Sorterer de bedste resultater, op til grænsen, efter pris eller enhedspris, med tilbud regnet med."
         }
       }
     },

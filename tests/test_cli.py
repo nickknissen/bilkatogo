@@ -570,6 +570,37 @@ def test_search_at_an_unknown_pickup_point_fails_clearly(invoke) -> None:
     assert "Unknown Pickup Point 'Bilka Atlantis'" in result.output
 
 
+def test_search_filters_and_sort(invoke, bilka: FakeBilka) -> None:
+    result = invoke(
+        "search",
+        "e",
+        "--in-stock",
+        "--on-offer",
+        "--sort",
+        "price",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert list(search_rows(result.output)) == ["18381", "128298"]
+    query = algolia_query(bilka.calls("algolia")[0])
+    assert query["filters"] == (
+        "isInAssortmentIn:1653 AND nonsearchable:false AND inStockStore:1653 AND isInOffer:1653"
+    )
+
+
+def test_search_in_leaflet(invoke, bilka: FakeBilka) -> None:
+    result = invoke("search", "e", "--in-leaflet", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert "No products." in result.output
+    query = algolia_query(bilka.calls("algolia")[0])
+    assert query["filters"].endswith(" AND isInCurrentLeaflet:true")
+
+
 def test_search_json(invoke) -> None:
     result = invoke("search", "skyr", "--email", EMAIL, "--password", PASSWORD, "--json")
 

@@ -22,6 +22,7 @@ from bilkatogo import (
     InvalidCredentialsError,
     NoPickupPointError,
     Product,
+    SearchSort,
 )
 
 from .const import DOMAIN
@@ -36,6 +37,10 @@ ATTR_ARTICLE_NUMBER = "article_number"
 ATTR_QUANTITY = "quantity"
 ATTR_QUERY = "query"
 ATTR_LIMIT = "limit"
+ATTR_IN_STOCK = "in_stock"
+ATTR_ON_OFFER = "on_offer"
+ATTR_IN_LEAFLET = "in_leaflet"
+ATTR_SORT = "sort"
 
 DEFAULT_SEARCH_LIMIT = 10
 
@@ -65,6 +70,10 @@ SEARCH_SCHEMA = probatio.Schema(
         probatio.Optional(ATTR_LIMIT, default=DEFAULT_SEARCH_LIMIT): probatio.All(
             probatio.Coerce(int), probatio.Range(min=1)
         ),
+        probatio.Optional(ATTR_IN_STOCK, default=False): cv.boolean,
+        probatio.Optional(ATTR_ON_OFFER, default=False): cv.boolean,
+        probatio.Optional(ATTR_IN_LEAFLET, default=False): cv.boolean,
+        probatio.Optional(ATTR_SORT, default=SearchSort.RELEVANCE): probatio.Coerce(SearchSort),
     }
 )
 
@@ -190,7 +199,15 @@ async def _remove_from_cart(call: ServiceCall) -> ServiceResponse:
 
 async def _search(call: ServiceCall) -> ServiceResponse:
     products = await _run(
-        call, lambda client: client.search(call.data[ATTR_QUERY], limit=call.data[ATTR_LIMIT])
+        call,
+        lambda client: client.search(
+            call.data[ATTR_QUERY],
+            limit=call.data[ATTR_LIMIT],
+            in_stock=call.data[ATTR_IN_STOCK],
+            on_offer=call.data[ATTR_ON_OFFER],
+            in_leaflet=call.data[ATTR_IN_LEAFLET],
+            sort=call.data[ATTR_SORT],
+        ),
     )
     return {"products": [_product_response(product) for product in products]}
 

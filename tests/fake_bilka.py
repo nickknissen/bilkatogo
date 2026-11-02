@@ -260,12 +260,19 @@ class FakeBilka:
         )
         if filters.get("nonsearchable") != "false" or "isInAssortmentIn" not in filters:
             return httpx.Response(400, json={"message": "fake: unexpected filters"})
-        store = int(filters["isInAssortmentIn"])
+        store = int(filters.pop("isInAssortmentIn"))
+        filters.pop("nonsearchable")
+        known = {"inStockStore": str(store), "isInOffer": str(store), "isInCurrentLeaflet": "true"}
+        if any(known.get(name) != value for name, value in filters.items()):
+            return httpx.Response(400, json={"message": f"fake: unexpected filters {filters}"})
+        per_store = {"inStockStore", "isInOffer"}
         words = query.get("query", "").casefold().split()
         hits = [
             hit
             for hit in self.products
             if store in hit["isInAssortmentIn"]
+            and all(store in hit[name] for name in per_store & filters.keys())
+            and (hit["isInCurrentLeaflet"] or "isInCurrentLeaflet" not in filters)
             and all(word in f"{hit['name']} {hit['brand']}".casefold() for word in words)
         ][: int(query.get("hitsPerPage", 20))]
         attributes = json.loads(query.get("attributesToRetrieve", "[]"))
