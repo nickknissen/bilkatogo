@@ -7,7 +7,7 @@ from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, form
 
 
 @pytest.mark.asyncio
-async def test_login_runs_gigya_and_shop_login_and_stores_the_session(
+async def test_login_runs_gigya_login_and_stores_the_jwt_without_a_shop_login(
     bilka: FakeBilka, storage: MemoryTokenStorage
 ) -> None:
     async with (
@@ -24,13 +24,11 @@ async def test_login_runs_gigya_and_shop_login_and_stores_the_session(
     assert form(jwt)["login_token"] == "st2.fake-login-token"
     assert form(jwt)["expiration"] == "86400"
     assert form(jwt)["apiKey"] == form(login)["apiKey"]
-    [shop_login] = bilka.calls("login_jwt")
-    assert shop_login.headers["jwt_token"] == "eyFake.jwt.token"
-    assert shop_login.url.params["u"] == "w"
+    assert bilka.calls("login_jwt") == []
 
     assert storage.data is not None
     assert storage.data["jwt"] == "eyFake.jwt.token"
-    assert storage.data["cookies"]["PHPSESSID"] == "fake-phpsessid"
+    assert "cookies" not in storage.data
 
 
 @pytest.mark.asyncio
@@ -49,10 +47,10 @@ async def test_wrong_password_raises_invalid_credentials_and_stores_nothing(
 
 
 @pytest.mark.asyncio
-async def test_failed_shop_login_raises_and_stores_nothing(
+async def test_failed_jwt_request_raises_and_stores_nothing(
     bilka: FakeBilka, storage: MemoryTokenStorage
 ) -> None:
-    bilka.script("login_jwt", httpx.Response(500, text="Internal Server Error"))
+    bilka.script("gigya_jwt", httpx.Response(500, text="Internal Server Error"))
 
     async with (
         bilka.client() as http,

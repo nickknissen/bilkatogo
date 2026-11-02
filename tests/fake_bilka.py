@@ -18,6 +18,16 @@ SESSION_COOKIES = {"PHPSESSID": "fake-phpsessid", "jwt_validation": "fake-jwt-va
 ALGOLIA_APP_ID = "F9VBJLR1BK"
 ALGOLIA_SEARCH_KEY = "1deaf41c87e729779f7695c00f190cc9"
 ALGOLIA_INDEX = "prod_BILKATOGO_PRODUCTS"
+UID = 900001
+
+# Without a valid JWT Bilka answers shop calls with HTTP 200 and `uid: -1` (captured 2026-11-02).
+LOGGED_OUT = {"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}
+ORDER_NOT_FOUND_LOGGED_OUT = {
+    "code": None,
+    "msg": "Ordren kunne ikke findes.",
+    "eid": 404,
+    "uid": -1,
+}
 
 ROUTES: dict[tuple[str, str], str] = {
     ("POST", "https://accounts.eu1.gigya.com/accounts.login"): "gigya_login",
@@ -66,7 +76,8 @@ class FakeBilka:
     method of the same name answers, which behaves like the real backend for one account.
 
     Like Bilka, LoginJWT hands out a `cart` cookie and, when a login presents one it handed
-    out before, replaces the Cart with the Cart as it was at that earlier login.
+    out before, replaces the Cart with the Cart as it was at that earlier login. The website
+    calls it; the client must not.
     """
 
     def __init__(self, email: str = EMAIL, password: str = PASSWORD) -> None:
@@ -130,11 +141,10 @@ class FakeBilka:
         return scripted(request)
 
     def has_shop_session(self, request: httpx.Request) -> bool:
-        sent = request.headers.get("cookie", "")
+        """Like Bilka, the shop accepts Gigya's JWT on its own, without LoginJWT or cookies."""
         return (
             request.headers.get("jwt_token") == load_fixture("gigya_jwt.json")["id_token"]
             and request.url.params.get("u") == "w"
-            and f"PHPSESSID={SESSION_COOKIES['PHPSESSID']}" in sent
         )
 
     def gigya_login(self, request: httpx.Request) -> httpx.Response:
@@ -164,7 +174,7 @@ class FakeBilka:
 
     def order_history(self, request: httpx.Request) -> httpx.Response:
         if not self.has_shop_session(request):
-            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
+            return httpx.Response(200, json=LOGGED_OUT)
         limit = int(request.url.params["limit"])
         offset = int(request.url.params["offset"])
         page = self.orders[offset : offset + limit]
@@ -172,7 +182,7 @@ class FakeBilka:
 
     def order_details(self, request: httpx.Request) -> httpx.Response:
         if not self.has_shop_session(request):
-            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
+            return httpx.Response(200, json=ORDER_NOT_FOUND_LOGGED_OUT)
         details = self.details.get(request.url.params.get("orderId", ""))
         if details is None:
             return httpx.Response(404, json={"code": 404, "msg": "Not found"})
@@ -180,15 +190,16 @@ class FakeBilka:
 
     def available_delivery_addresses(self, request: httpx.Request) -> httpx.Response:
         if not self.has_shop_session(request):
-            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
-        return httpx.Response(200, json=self.delivery_addresses)
+            return httpx.Response(200, json={**self.delivery_addresses, "uid": -1})
+        return httpx.Response(200, json={**self.delivery_addresses, "uid": UID})
 
     def cart(self, request: httpx.Request) -> httpx.Response:
         if not self.has_shop_session(request):
-            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
-        return httpx.Response(200, json=self.cart_contents)
+            return httpx.Response(200, json=load_fixture("cart.json"))
+        return httpx.Response(200, json={**self.cart_contents, "uid": UID})
 
     def change_line_count(self, request: httpx.Request) -> httpx.Response:
+        # Bilka's answer to a logged-out change was not captured.
         if not self.has_shop_session(request):
             return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
         article_number = request.url.params["productId"]
@@ -227,12 +238,13 @@ class FakeBilka:
         )
 
     def empty_cart(self, request: httpx.Request) -> httpx.Response:
+        # Bilka's answer to a logged-out EmptyCart was not captured.
         if not self.has_shop_session(request):
             return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
         self.cart_contents["lines"] = [
             group for group in self.cart_contents["lines"] if group["headline"] in FEE_GROUPS
         ]
-        return httpx.Response(200, json=self.cart_contents)
+        return httpx.Response(200, json={**self.cart_contents, "uid": UID})
 
     def algolia(self, request: httpx.Request) -> httpx.Response:
         if (

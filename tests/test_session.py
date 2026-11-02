@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -5,7 +6,7 @@ import pytest
 
 from bilkatogo import BilkaToGoClient, BilkaUnreachableError, UnexpectedResponseError
 from tests.conftest import MemoryTokenStorage
-from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka
+from tests.fake_bilka import EMAIL, LOGGED_OUT, PASSWORD, FakeBilka, load_fixture
 
 UNAUTHORIZED = httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
 
@@ -34,7 +35,7 @@ async def test_unauthorized_shop_call_logs_in_again_and_retries_once(
     assert len(orders) == 2
     assert len(bilka.calls("order_history")) == 2
     assert len(bilka.calls("gigya_login")) == 2
-    assert len(bilka.calls("login_jwt")) == 2
+    assert bilka.calls("login_jwt") == []
 
 
 @pytest.mark.asyncio
@@ -55,7 +56,7 @@ async def test_logging_in_again_keeps_cart_changes_made_elsewhere(
     ):
         cart = await client.get_cart()
 
-    assert len(logged_in_cart.calls("login_jwt")) == 3
+    assert logged_in_cart.calls("login_jwt") == []
     assert {line.article_number: line.quantity for line in cart.lines}["18364"] == 3
 
 
@@ -96,35 +97,65 @@ async def test_unauthorized_again_after_a_fresh_login_raises_instead_of_looping(
 
 
 @pytest.mark.asyncio
-async def test_ok_answer_with_an_error_body_counts_as_an_expired_session(
-    bilka: FakeBilka, storage: MemoryTokenStorage
+async def test_a_jwt_bilka_no_longer_accepts_logs_in_again_on_every_read(
+    logged_in_cart: FakeBilka, storage: MemoryTokenStorage
 ) -> None:
-    await log_in(bilka, storage)
-    bilka.script("order_history", {"code": 1, "msg": "Du er ikke logget ind"})
+    await log_in(logged_in_cart, storage)
 
-    async with (
-        bilka.client() as http,
-        BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
-    ):
-        orders = await client.get_orders()
+    async def revoked[T](read: Callable[[BilkaToGoClient], Awaitable[T]]) -> T:
+        assert storage.data is not None
+        storage.data["jwt"] = "revoked-by-bilka"
+        async with (
+            logged_in_cart.client() as http,
+            BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
+        ):
+            return await read(client)
 
-    assert len(orders) == 2
-    assert len(bilka.calls("gigya_login")) == 2
+    assert len(await revoked(lambda client: client.get_orders())) == 2
+    details = await revoked(lambda client: client.get_order("900000000001"))
+    assert details.order_number == "900000000001"
+    assert (await revoked(lambda client: client.get_cart())).lines
+    assert await revoked(lambda client: client.get_pickup_points())
+    assert len(logged_in_cart.calls("gigya_login")) == 5
 
 
 @pytest.mark.asyncio
-async def test_an_error_body_after_a_fresh_login_raises_with_bilkas_message(
+@pytest.mark.parametrize(
+    ("route", "logged_out"),
+    [
+        ("order_history", LOGGED_OUT),
+        ("order_history", {"code": 1, "msg": "Du er ikke logget ind"}),
+        ("cart", load_fixture("cart.json")),
+    ],
+)
+async def test_a_logged_out_answer_logs_in_again_and_retries_once(
+    logged_in_cart: FakeBilka, storage: MemoryTokenStorage, route: str, logged_out: dict
+) -> None:
+    await log_in(logged_in_cart, storage)
+    logged_in_cart.script(route, logged_out)
+
+    async with (
+        logged_in_cart.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
+    ):
+        await client.get_orders() if route == "order_history" else await client.get_cart()
+
+    assert len(logged_in_cart.calls(route)) == 2
+    assert len(logged_in_cart.calls("gigya_login")) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_logged_out_answer_after_a_fresh_login_raises_with_bilkas_message(
     bilka: FakeBilka, storage: MemoryTokenStorage
 ) -> None:
     await log_in(bilka, storage)
-    logged_out = {"code": 1, "msg": "Du er ikke logget ind"}
-    bilka.script("order_history", logged_out, logged_out)
+    bilka.script("order_history", LOGGED_OUT, LOGGED_OUT)
 
     async with (
         bilka.client() as http,
         BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
     ):
-        with pytest.raises(UnexpectedResponseError, match="Du er ikke logget ind"):
+        with pytest.raises(UnexpectedResponseError, match="Metoden kræver login"):
             await client.get_orders()
 
     assert len(bilka.calls("order_history")) == 2
@@ -190,9 +221,9 @@ async def test_stored_session_about_to_expire_is_renewed_before_the_shop_call(
             "Could not reach accounts.eu1.gigya.com: ConnectTimeout: fake: connect timed out",
         ),
         (
-            "login_jwt",
+            "gigya_jwt",
             httpx.ConnectError("fake: connection reset"),
-            "Could not reach api.bilkatogo.dk: ConnectError: fake: connection reset",
+            "Could not reach accounts.eu1.gigya.com: ConnectError: fake: connection reset",
         ),
     ],
 )
@@ -224,7 +255,7 @@ HTML_ERROR = "<html><body>Bad Gateway</body></html>"
         ("gigya_login", httpx.Response(502, text=HTML_ERROR)),
         ("gigya_login", httpx.Response(200, json={"errorCode": 0})),
         ("gigya_jwt", httpx.Response(500, json={"errorCode": 500001, "errorMessage": "fake"})),
-        ("login_jwt", httpx.Response(500, text="Internal Server Error")),
+        ("gigya_jwt", httpx.Response(500, text="Internal Server Error")),
     ],
 )
 async def test_unexpected_answers_raise_unexpected_response(

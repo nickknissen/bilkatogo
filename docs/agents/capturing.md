@@ -21,9 +21,14 @@ Found in the live check for #26 (2026-10-27):
 
 - `auth/LoginJWT` replaces the account's Cart with the Cart stored under the `cart` cookie the login presents. It is the guest-Cart transfer (fill a Cart, log in, it moves to the account), applied also to `cart` cookies handed out while logged in. It replaces, it does not merge.
 - Bilka sets `cart={"cartID": …}` itself: HttpOnly, 7 days, a new `cartID` on every `LoginJWT` (`cart=deleted` for the presented one first). Reads and `ChangeLineCount` leave it alone.
-- So a browser or app that logs in again brings back the Cart as it was at its previous login. A login without a `cart` cookie, or with a fresh guest Cart that is empty, leaves the Cart alone. The library logs in without one.
+- So a browser or app that logs in again brings back the Cart as it was at its previous login. A login without a `cart` cookie, or with a fresh guest Cart that is empty, leaves the Cart alone. The library never calls `LoginJWT` (see below).
 - Choosing a Pickup Point sends `shop/v6/SetDeliveryAddress?id=…&zipcode=…` and adds a `pz={"id":…}` cookie to later requests.
 - Unknown: whether a `cartID` answered with `cart=deleted` still restores, and how long Bilka keeps a stored Cart.
+
+Found on 2026-11-02:
+
+- A shop call without a valid JWT (none, a bad signature, or expired) answers HTTP 200 with `uid: -1`, never 401. `OrderHistory` answers `{"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}`, `OrderDetails` `{"code": null, "msg": "Ordren kunne ikke findes.", "eid": 404, "uid": -1}`, and `Cart` and `AvailableDeliveryAddresses` their normal guest answer. Logged in, `uid` is the customer's id.
+- A JWT fresh from Gigya's `accounts.getJWT`, sent as `jwt_token` with no cookies and without ever calling `auth/LoginJWT`, reads the account's Cart and Order History, and its `ChangeLineCount` changes the account's Cart (0 → 1 → 0 on an empty Cart, read back uncached). `ChangeLineCount` answers with a `Set-Cookie` for `cart` and `PHPSESSID`; the shop does not need them back. So the library relies on the JWT alone and stores no cookies with its session (httpx may still send back cookies Bilka set within one client's lifetime).
 
 ## Reading the browser's network log
 
