@@ -49,8 +49,16 @@ def _is_error_body(data: dict[str, Any]) -> bool:
 
 
 def _is_session_expired(data: dict[str, Any]) -> bool:
-    """Bilka's error body for an expired session: `{"code": 1, "msg": "Du er ikke logget ind"}`."""
-    return data.get("code") == 1
+    """Whether Bilka answered as if logged out.
+
+    Without a valid JWT every shop call still answers HTTP 200, with `uid: -1`: OrderHistory
+    `{"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}`,
+    OrderDetails "Ordren kunne ikke findes." and Cart an empty guest Cart (captured
+    2026-11-02). `{"code": 1, "msg": "Du er ikke logget ind"}` comes from community code
+    and was never captured.
+    """
+    uid = data.get("uid")
+    return (isinstance(uid, int) and uid <= 0) or data.get("code") == 1
 
 
 class _ShopRefusedError(UnexpectedResponseError):

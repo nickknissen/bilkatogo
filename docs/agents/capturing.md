@@ -25,6 +25,11 @@ Found in the live check for #26 (2026-10-27):
 - Choosing a Pickup Point sends `shop/v6/SetDeliveryAddress?id=…&zipcode=…` and adds a `pz={"id":…}` cookie to later requests.
 - Unknown: whether a `cartID` answered with `cart=deleted` still restores, and how long Bilka keeps a stored Cart.
 
+Found on 2026-11-02 with read-only calls:
+
+- A shop call without a valid JWT (none, a bad signature, or expired) answers HTTP 200 with `uid: -1`, never 401. `OrderHistory` answers `{"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}`, `OrderDetails` `{"code": null, "msg": "Ordren kunne ikke findes.", "eid": 404, "uid": -1}`, and `Cart` and `AvailableDeliveryAddresses` their normal guest answer. Logged in, `uid` is the customer's id.
+- A JWT fresh from Gigya's `accounts.getJWT`, sent as `jwt_token` with no cookies and without ever calling `auth/LoginJWT`, reads the account's Cart and Order History.
+
 ## Reading the browser's network log
 
 - List with `list_network_requests` filtered to `resourceTypes: ["xhr", "fetch"]` and a `pageSize` of 20 or less, paging from the end; the unfiltered log runs to 90k characters of analytics, and even the filtered one carries long analytics and map-tile URLs.
