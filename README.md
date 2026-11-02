@@ -120,6 +120,8 @@ bilkatogo order 900000000001    # show one order by Order Number
 bilkatogo pickup-points         # list Pickup Points and their Store, * marks your Cart's
 bilkatogo search skyr           # Products with Article Number, Price, stock and Offer at your Cart's Store
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
+bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
+bilkatogo search kaffe --on-offer --in-leaflet  # Offers and Multibuy Offers in this week's Leaflet
 bilkatogo cart                  # your Cart Lines, the Cart total and your Pickup Point
 bilkatogo cart add 18381 --quantity 2   # add 2 of a Product by Article Number
 bilkatogo cart set 18381 5      # hold exactly 5
@@ -251,12 +253,14 @@ Order Status sensor shows the status.
 |---|---|---|
 | `bilkatogo.add_to_cart` | `article_number`, `quantity` (default 1) | Optional: the Cart, with its Cart Lines (Product, Article Number, quantity, Price, line total), total, Deposit, Service Fee, Packaging, Discount, Pickup Point and Bilka's warnings |
 | `bilkatogo.remove_from_cart` | `article_number`, `quantity` (default: all of it) | Optional: the Cart, as for `add_to_cart` |
-| `bilkatogo.search` | `query`, `limit` (default 10) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
+| `bilkatogo.search` | `query`, `limit` (default 10), `in_stock`, `on_offer`, `in_leaflet` (default false), `sort` (`relevance`, `price`, `unit_price`) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
 | `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
 
 `add_to_cart` adds to what is already in the Cart and `remove_from_cart` takes `quantity` off
 it, or the whole Cart Line without one; neither places an Order. `search` searches at the
-Store serving the Cart's Pickup Point, so choose one on bilkatogo.dk first. With more than one
+Store serving the Cart's Pickup Point, so choose one on bilkatogo.dk first. `sort` orders the
+`limit` best matches by what one costs now, the Offer Price where there is one; it does not
+search the whole assortment for the cheapest. With more than one
 account added, pass `config_entry_id`. A script that searches and adds the first hit:
 
 ```yaml

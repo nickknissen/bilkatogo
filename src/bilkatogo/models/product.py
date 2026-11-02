@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 
 from .base import BilkaDataClass
@@ -61,6 +62,37 @@ class Product(BilkaDataClass):
             offer=offer,
             multibuy_offer=label if multibuy and label else None,
         )
+
+
+class SearchSort(StrEnum):
+    """How `search()` orders the Products it found."""
+
+    RELEVANCE = "relevance"
+    """Bilka's own order, best match first."""
+    PRICE = "price"
+    """Cheapest first, by the Offer Price where there is an Offer."""
+    UNIT_PRICE = "unit_price"
+    """Cheapest Unit Price first, by the Offer's where there is one; Products without one last.
+    Units are not converted, so compare Products sold by the same unit."""
+
+
+def sort_products(products: list[Product], sort: SearchSort) -> list[Product]:
+    """Order Products for `search()`; ties keep Bilka's relevance order."""
+    if sort is SearchSort.PRICE:
+        return sorted(products, key=_price_paid)
+    if sort is SearchSort.UNIT_PRICE:
+        return sorted(products, key=_unit_price_paid)
+    return products
+
+
+def _price_paid(product: Product) -> Decimal:
+    return product.offer.price if product.offer else product.price
+
+
+def _unit_price_paid(product: Product) -> tuple[bool, Decimal]:
+    unit_price = product.offer.unit_price if product.offer else None
+    unit_price = unit_price if unit_price is not None else product.unit_price
+    return (unit_price is None, unit_price or Decimal(0))
 
 
 def _whole_number(value: Any) -> int | None:

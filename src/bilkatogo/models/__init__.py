@@ -13,3 +13,4 @@ from .order_details import PickupCode as PickupCode
 from .order_details import Substitution as Substitution
 from .product import Offer as Offer
 from .product import Product as Product
+from .product import SearchSort as SearchSort

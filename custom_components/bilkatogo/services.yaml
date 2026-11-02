@@ -50,6 +50,27 @@ search:
         number:
           min: 1
           mode: box
+    in_stock:
+      default: false
+      selector:
+        boolean:
+    on_offer:
+      default: false
+      selector:
+        boolean:
+    in_leaflet:
+      default: false
+      selector:
+        boolean:
+    sort:
+      default: relevance
+      selector:
+        select:
+          translation_key: search_sort
+          options:
+            - relevance
+            - price
+            - unit_price
 
 get_cart:
   fields:

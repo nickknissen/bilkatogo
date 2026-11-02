@@ -238,6 +238,44 @@ async def test_search_limit_caps_the_number_of_products(
     assert [product["article_number"] for product in response["products"]] == ["19753"]
 
 
+async def test_search_filters_and_sorts(
+    hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(
+        hass, "search", {"query": "e", "in_stock": True, "on_offer": True, "sort": "price"}
+    )
+
+    assert [product["article_number"] for product in response["products"]] == ["18381", "128298"]
+    query = algolia_query(bilka.calls("algolia")[-1])
+    assert query["filters"] == (
+        "isInAssortmentIn:1653 AND nonsearchable:false AND inStockStore:1653 AND isInOffer:1653"
+    )
+
+
+async def test_search_in_leaflet(
+    hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(hass, "search", {"query": "e", "in_leaflet": True})
+
+    assert response["products"] == []
+    assert algolia_query(bilka.calls("algolia")[-1])["filters"].endswith(
+        " AND isInCurrentLeaflet:true"
+    )
+
+
+async def test_search_with_an_unknown_sort_is_refused(
+    hass: HomeAssistant, setup_integration: SetupIntegration
+) -> None:
+    await setup_integration()
+
+    with pytest.raises(probatio.Invalid):
+        await call(hass, "search", {"query": "skyr", "sort": "popularity"})
+
+
 async def test_search_without_a_pickup_point_asks_to_choose_one(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
@@ -348,7 +386,10 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
     for action, fields in [
         ("add_to_cart", ["config_entry_id", "article_number", "quantity"]),
         ("remove_from_cart", ["config_entry_id", "article_number", "quantity"]),
-        ("search", ["config_entry_id", "query", "limit"]),
+        (
+            "search",
+            ["config_entry_id", "query", "limit", "in_stock", "on_offer", "in_leaflet", "sort"],
+        ),
         ("get_cart", ["config_entry_id"]),
     ]:
         assert services[f"{prefix}.services.{action}.name"]

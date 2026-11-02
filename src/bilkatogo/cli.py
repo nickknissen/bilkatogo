@@ -30,6 +30,7 @@ from .models import (
     PickupPoint,
     PickupSlot,
     Product,
+    SearchSort,
 )
 from .redact import redact as redact_personal_data
 from .token_storage import FileTokenStorage
@@ -375,6 +376,23 @@ PickupPointOption = Annotated[
 SearchLimitOption = Annotated[
     int, typer.Option("--limit", min=1, help="Number of Products to show.")
 ]
+InStockOption = Annotated[
+    bool, typer.Option("--in-stock", help="Only Products in stock at the Store.")
+]
+OnOfferOption = Annotated[
+    bool,
+    typer.Option("--on-offer", help="Only Products with an Offer or Multibuy Offer at the Store."),
+]
+InLeafletOption = Annotated[
+    bool, typer.Option("--in-leaflet", help="Only Products in this week's Leaflet.")
+]
+SortOption = Annotated[
+    SearchSort,
+    typer.Option(
+        "--sort",
+        help="Order the --limit best matches by Price or Unit Price, counting Offers.",
+    ),
+]
 
 
 @app.command()
@@ -384,6 +402,10 @@ async def search(
     text: SearchTextArgument,
     pickup_point: PickupPointOption = None,
     limit: SearchLimitOption = SEARCH_LIMIT,
+    in_stock: InStockOption = False,
+    on_offer: OnOfferOption = False,
+    in_leaflet: InLeafletOption = False,
+    sort: SortOption = SearchSort.RELEVANCE,
     email: EmailOption = None,
     password: PasswordOption = None,
     as_json: JsonOption = False,
@@ -393,7 +415,15 @@ async def search(
         ctx,
         email,
         password,
-        lambda client: client.search(text, pickup_point=pickup_point, limit=limit),
+        lambda client: client.search(
+            text,
+            pickup_point=pickup_point,
+            limit=limit,
+            in_stock=in_stock,
+            on_offer=on_offer,
+            in_leaflet=in_leaflet,
+            sort=sort,
+        ),
         "products",
     )
     if as_json:

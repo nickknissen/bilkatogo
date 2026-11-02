@@ -34,7 +34,8 @@ from .exceptions import (
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
-from .models import Cart, Order, OrderDetails, OrderHistory, PickupPoint, Product
+from .models import Cart, Order, OrderDetails, OrderHistory, PickupPoint, Product, SearchSort
+from .models.product import sort_products
 from .token_storage import TokenStorage
 
 
@@ -241,8 +242,22 @@ class BilkaToGoClient:
         return PickupPoint.from_delivery_address(address) if address else None
 
     async def search(
-        self, text: str, *, pickup_point: str | None = None, limit: int = SEARCH_LIMIT
+        self,
+        text: str,
+        *,
+        pickup_point: str | None = None,
+        limit: int = SEARCH_LIMIT,
+        in_stock: bool = False,
+        on_offer: bool = False,
+        in_leaflet: bool = False,
+        sort: SearchSort = SearchSort.RELEVANCE,
     ) -> list[Product]:
+        """Products matching `text` at the Store of a Pickup Point, the Cart's by default.
+
+        `in_stock` keeps Products in stock at the Store, `on_offer` those with an Offer or a
+        Multibuy Offer there, `in_leaflet` those in this week's Leaflet. `sort` orders the
+        `limit` best matches; it does not search the whole assortment for the cheapest.
+        """
         point = (
             await self.get_pickup_point(pickup_point)
             if pickup_point is not None
@@ -251,11 +266,18 @@ class BilkaToGoClient:
         if point is None or point.store_id is None:
             raise NoPickupPointError("No Pickup Point chosen in the Cart; name one to search at")
         store_id = point.store_id
+        filters = [f"isInAssortmentIn:{store_id}", "nonsearchable:false"]
+        if in_stock:
+            filters.append(f"inStockStore:{store_id}")
+        if on_offer:
+            filters.append(f"isInOffer:{store_id}")
+        if in_leaflet:
+            filters.append("isInCurrentLeaflet:true")
         params = urlencode(
             {
                 "query": text,
                 "hitsPerPage": limit,
-                "filters": f"isInAssortmentIn:{store_id} AND nonsearchable:false",
+                "filters": " AND ".join(filters),
                 "attributesToRetrieve": json.dumps(
                     ["name", "brand", "price", f"storeData.{store_id}"]
                 ),
@@ -278,7 +300,7 @@ class BilkaToGoClient:
         except KeyError, TypeError, ValueError:
             raise UnexpectedResponseError("Product search answered without results") from None
         products = (Product.from_hit(hit, store_id) for hit in hits)
-        return [product for product in products if product is not None]
+        return sort_products([product for product in products if product is not None], sort)
 
     async def _shop(self, method: str, path: str, params: dict[str, Any]) -> dict[str, Any]:
         jwt = self._valid_jwt() or await self._restore_session() or await self._login()

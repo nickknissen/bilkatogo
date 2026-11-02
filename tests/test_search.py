@@ -12,6 +12,7 @@ from bilkatogo import (
     NoPickupPointError,
     Offer,
     Product,
+    SearchSort,
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
@@ -195,3 +196,74 @@ async def test_unexpected_algolia_answer_raises_unexpected_response(
 
     with pytest.raises(UnexpectedResponseError, match="Product search"):
         await search(bilka, "skyr")
+
+
+@pytest.mark.asyncio
+async def test_filters_narrow_the_search_at_the_store(bilka: FakeBilka) -> None:
+    await search(bilka, "skyr", in_stock=True, on_offer=True, in_leaflet=True)
+
+    [request] = bilka.calls("algolia")
+    assert algolia_query(request)["filters"] == (
+        "isInAssortmentIn:1653 AND nonsearchable:false"
+        " AND inStockStore:1653 AND isInOffer:1653 AND isInCurrentLeaflet:true"
+    )
+
+
+def article_numbers(products: list[Product]) -> list[str]:
+    return [product.article_number for product in products]
+
+
+@pytest.mark.asyncio
+async def test_in_stock_leaves_out_products_out_of_stock_at_the_store(bilka: FakeBilka) -> None:
+    products = await search(bilka, "", in_stock=True)
+
+    assert article_numbers(products) == ["19753", "128298", "18381"]
+
+
+@pytest.mark.asyncio
+async def test_on_offer_keeps_offers_and_multibuy_offers(bilka: FakeBilka) -> None:
+    products = await search(bilka, "", on_offer=True)
+
+    assert article_numbers(products) == ["128298", "18381", "169794"]
+
+
+@pytest.mark.asyncio
+async def test_in_leaflet_keeps_products_in_this_weeks_leaflet(bilka: FakeBilka) -> None:
+    bilka.products[3]["isInCurrentLeaflet"] = True
+
+    products = await search(bilka, "", in_leaflet=True)
+
+    assert article_numbers(products) == ["140787"]
+
+
+@pytest.mark.asyncio
+async def test_sort_by_price_puts_the_cheapest_first_counting_offers(bilka: FakeBilka) -> None:
+    products = await search(bilka, "", sort=SearchSort.PRICE)
+
+    # Bananer 2.75, mozzarella 14.35, skyr on Offer 25.00 (Price 39.31), skyr 30.95,
+    # chicken on Offer 60.00 (Price 64.95).
+    assert article_numbers(products) == ["18381", "140787", "128298", "19753", "169794"]
+
+
+@pytest.mark.asyncio
+async def test_sort_by_unit_price_counts_offers_and_puts_products_without_one_last(
+    bilka: FakeBilka,
+) -> None:
+    bilka.products[0]["storeData"]["1653"]["unitsOfMeasurePriceUnit"] = ""
+
+    products = await search(bilka, "", sort=SearchSort.UNIT_PRICE)
+
+    # Bananer 2.75/stk, skyr on Offer 31.25/kg (49.14 without), mozzarella 71.75/kg,
+    # chicken on Offer 92.31/kg, then the skyr without a Unit Price.
+    assert article_numbers(products) == ["18381", "128298", "140787", "169794", "19753"]
+
+
+@pytest.mark.asyncio
+async def test_sort_orders_only_the_best_matches_up_to_the_limit(bilka: FakeBilka) -> None:
+    products = await search(bilka, "", limit=2, sort=SearchSort.PRICE)
+
+    [request] = bilka.calls("algolia")
+    assert algolia_query(request)["hitsPerPage"] == "2"
+    # The two best matches, skyr on Offer 25.00 before skyr 30.95; the cheaper Bananer
+    # further down Bilka's order is not among them.
+    assert article_numbers(products) == ["128298", "19753"]
