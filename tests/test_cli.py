@@ -186,10 +186,23 @@ def test_orders_json_output(invoke) -> None:
         "home_delivery": False,
         "delivered": False,
         "ordered_total": "456.00",
-        "order_total": "0.00",
+        "order_total": "449.00",
         "content": "Æbler, Havregryn, Letmælk",
     }
     assert collected["status"] == "picked_up"
+
+
+def test_orders_json_shows_bilkas_estimate_before_packing(invoke, bilka: FakeBilka) -> None:
+    bilka.orders = load_fixture("order_history_received.json")["orders"]
+    invoke("login", "--email", EMAIL, "--password", PASSWORD)
+
+    result = invoke("orders", "--json")
+
+    assert result.exit_code == 0, result.output
+    [received] = json.loads(result.output)
+    assert received["status"] == "received"
+    assert received["ordered_total"] == "876.53"
+    assert received["order_total"] == "859.98"
 
 
 def test_orders_without_a_session_prompts_for_the_password(

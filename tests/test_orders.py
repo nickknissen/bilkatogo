@@ -133,7 +133,7 @@ async def test_get_orders_logs_in_and_returns_typed_orders(
     assert upcoming.pickup_point.city == "Eksempelby"
     assert upcoming.home_delivery is False
     assert upcoming.ordered_total == Decimal("456.00")
-    assert upcoming.order_total == Decimal("0.00")
+    assert upcoming.order_total == Decimal("449.00")
     assert upcoming.content == "Æbler, Havregryn, Letmælk"
 
     assert collected.order_number == "900000000001"

@@ -36,10 +36,6 @@ def _slot_time(order: Order | None, *, start: bool) -> datetime | None:
     return slot.starts_at if start else slot.ends_at
 
 
-def _order_price(order: Order) -> Decimal:
-    return order.order_total or order.ordered_total
-
-
 def _status_attributes(data: BilkaToGoData) -> dict[str, Any] | None:
     order = data.order
     if order is None:
@@ -58,7 +54,7 @@ def _order_total(data: BilkaToGoData) -> Decimal | None:
     if data.details:
         return data.details.order_total
     if data.order:
-        return _order_price(data.order)
+        return data.order.order_total
     return None
 
 
