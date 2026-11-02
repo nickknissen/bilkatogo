@@ -16,6 +16,18 @@ add_to_cart:
           min: 1
           mode: box
 
+add_items_to_cart:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: bilkatogo
+    items:
+      required: true
+      example: '[{"article_number": "18381", "quantity": 10}, {"article_number": "19753"}]'
+      selector:
+        object:
+
 remove_from_cart:
   fields:
     config_entry_id:

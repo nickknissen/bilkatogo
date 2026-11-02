@@ -14,6 +14,11 @@ ORDER_HISTORY_PAGE_SIZE = 20
 ORDER_HISTORY_PARAMS = {"muah": 1, "ordertype": "dibs,pgw"}
 CART_PARAMS = {"extra": "deliveryAddress,deliveryDate"}
 CURRENT_ORDER_SCAN_LIMIT = 20
+# Several Cart changes go one after another, a pause apart, like a person clicking. A change
+# that Bilka does not answer, or answers with HTTP 429 or 5xx, is retried after each delay;
+# the quantity is absolute, so repeating it is safe.
+CART_CHANGE_PAUSE_SECONDS = 0.25
+CART_CHANGE_RETRY_DELAYS = (0.5, 1.0, 2.0)
 # Order History can take well over httpx's default of 5 seconds to answer.
 REQUEST_TIMEOUT_SECONDS = 30.0
 BILKA_TIME_ZONE = ZoneInfo("Europe/Copenhagen")

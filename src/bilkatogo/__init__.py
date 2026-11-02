@@ -14,6 +14,9 @@ from .exceptions import (
 )
 from .models import (
     Cart,
+    CartChange,
+    CartChanges,
+    CartChangeStatus,
     CartLine,
     MissingItem,
     Offer,
@@ -41,7 +44,10 @@ __all__ = [
     "BilkaToGoError",
     "BilkaUnreachableError",
     "Cart",
+    "CartChange",
     "CartChangeRejectedError",
+    "CartChangeStatus",
+    "CartChanges",
     "CartLine",
     "FileTokenStorage",
     "InvalidCredentialsError",

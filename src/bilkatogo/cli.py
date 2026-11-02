@@ -23,6 +23,7 @@ from .exceptions import (
 from .models import (
     BilkaDataClass,
     Cart,
+    CartChangeStatus,
     Offer,
     Order,
     OrderDetails,
@@ -520,6 +521,69 @@ async def cart_add(
         as_json,
         lambda client: client.add_to_cart(article_number, quantity),
     )
+
+
+@cart_app.command("add-items")
+@run_async
+async def cart_add_items(
+    ctx: typer.Context,
+    items: Annotated[
+        list[str],
+        typer.Argument(
+            metavar="ARTICLE[:QUANTITY]...",
+            help="Article Numbers, each with how many to add, e.g. 18381:10 19753.",
+        ),
+    ],
+    quantity: Annotated[
+        int, typer.Option("--quantity", min=1, help="How many to add where none is given.")
+    ] = 1,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Add several Products to your Cart, one after another."""
+    wanted = parse_items(items, quantity)
+    result = await with_session(
+        ctx,
+        email,
+        password,
+        lambda client: client.add_items_to_cart(wanted),
+        "the cart",
+        action="Could not change",
+    )
+    if as_json:
+        typer.echo(to_json(result))
+    else:
+        print_table(
+            ["Article", "Quantity", "Result", "Message"],
+            [
+                [
+                    change.article_number,
+                    str(change.requested),
+                    change.status.value,
+                    change.message or "",
+                ]
+                for change in result.changes
+            ],
+        )
+        typer.echo()
+        print_cart(result.cart)
+    if any(change.status is not CartChangeStatus.APPLIED for change in result.changes):
+        raise typer.Exit(1)
+
+
+def parse_items(items: list[str], default_quantity: int) -> dict[str, int]:
+    wanted: dict[str, int] = {}
+    for item in items:
+        article_number, _, count = item.partition(":")
+        try:
+            quantity = int(count) if count else default_quantity
+        except ValueError:
+            raise fail(f"{item!r} is not ARTICLE or ARTICLE:QUANTITY.") from None
+        if not article_number or quantity < 1:
+            raise fail(f"{item!r} is not ARTICLE or ARTICLE:QUANTITY with a quantity of 1 or more.")
+        wanted[article_number] = wanted.get(article_number, 0) + quantity
+    return wanted
 
 
 @cart_app.command("set")

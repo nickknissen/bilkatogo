@@ -16,6 +16,7 @@ from tests.ha.conftest import SetupIntegration
 
 ACTIONS = [
     ("add_to_cart", {"article_number": "19753"}),
+    ("add_items_to_cart", {"items": [{"article_number": "19753"}]}),
     ("remove_from_cart", {"article_number": "18381"}),
     ("search", {"query": "skyr"}),
     ("get_cart", {}),
@@ -62,6 +63,102 @@ async def test_add_to_cart_adds_to_an_existing_cart_line_and_returns_the_cart(
         "pickup_point": "Bilka Vejle",
         "warnings": [],
     }
+
+
+@pytest.fixture
+def no_pauses(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def sleep(seconds: float) -> None:
+        pass
+
+    monkeypatch.setattr("bilkatogo.client.sleep", sleep)
+
+
+@pytest.mark.usefixtures("no_pauses")
+async def test_add_items_to_cart_adds_each_and_returns_the_results_and_cart(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(
+        hass,
+        "add_items_to_cart",
+        {
+            "items": [
+                {"article_number": "18381", "quantity": 2},
+                {"article_number": "19753"},
+                {"article_number": "18381", "quantity": 1},
+            ]
+        },
+    )
+
+    counts = [request.url.params["count"] for request in cart.calls("change_line_count")]
+    assert counts == ["13", "1"]
+    assert response["changes"] == [
+        {
+            "article_number": "18381",
+            "requested": 13,
+            "applied": 13,
+            "status": "applied",
+            "message": None,
+        },
+        {
+            "article_number": "19753",
+            "requested": 1,
+            "applied": 1,
+            "status": "applied",
+            "message": None,
+        },
+    ]
+    assert response["cart"]["lines"][0]["quantity"] == 13
+    assert response["cart"]["pickup_point"] == "Bilka Vejle"
+
+
+@pytest.mark.usefixtures("no_pauses")
+async def test_add_items_to_cart_reports_a_rejected_item_and_adds_the_rest(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+    cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
+
+    response = await call(
+        hass,
+        "add_items_to_cart",
+        {"items": [{"article_number": "88672"}, {"article_number": "19753"}]},
+    )
+
+    rejected, added = response["changes"]
+    assert rejected["status"] == "rejected"
+    assert "ikke aktuelt tilgængeligt" in rejected["message"]
+    assert added["status"] == "applied"
+
+
+@pytest.mark.usefixtures("no_pauses")
+async def test_add_items_to_cart_fails_when_none_was_added(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+    cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
+
+    with pytest.raises(HomeAssistantError) as failed:
+        await call(hass, "add_items_to_cart", {"items": [{"article_number": "88672"}]})
+
+    assert failed.value.translation_key == "no_items_added"
+    placeholders = failed.value.translation_placeholders
+    assert placeholders is not None
+    assert "88672: Produktet" in placeholders["error"]
+
+
+@pytest.mark.parametrize(
+    "items",
+    [[], [{"quantity": 2}], [{"article_number": "19753", "quantity": 0}]],
+)
+async def test_add_items_to_cart_refuses_malformed_items(
+    hass: HomeAssistant, setup_integration: SetupIntegration, items: list[dict[str, Any]]
+) -> None:
+    await setup_integration()
+
+    with pytest.raises(probatio.Invalid):
+        await call(hass, "add_items_to_cart", {"items": items})
 
 
 async def test_add_to_cart_creates_a_cart_line_and_returns_nothing_unless_asked(
@@ -385,6 +482,7 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
 
     for action, fields in [
         ("add_to_cart", ["config_entry_id", "article_number", "quantity"]),
+        ("add_items_to_cart", ["config_entry_id", "items"]),
         ("remove_from_cart", ["config_entry_id", "article_number", "quantity"]),
         (
             "search",
@@ -406,4 +504,5 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         "action_failed",
     ]:
         assert exceptions[f"{prefix}.exceptions.{key}.message"]
+    assert "{error}" in exceptions[f"{prefix}.exceptions.no_items_added.message"]
     assert "{error}" in exceptions[f"{prefix}.exceptions.cart_change_rejected.message"]

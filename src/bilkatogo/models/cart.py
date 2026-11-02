@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 
 from .base import BilkaDataClass
@@ -63,3 +64,33 @@ class Cart(BilkaDataClass):
             discount=discount(stat),
             pickup_point=PickupPoint.from_delivery_address(address) if address else None,
         )
+
+
+class CartChangeStatus(StrEnum):
+    APPLIED = "applied"
+    """Bilka set the quantity asked for; `message` holds any warning it gave."""
+    REJECTED = "rejected"
+    """Bilka refused the change or set a different quantity; `message` is Bilka's."""
+    SKIPPED = "skipped"
+    """Not made because Bilka stopped answering; the Cart shows what it holds."""
+
+
+@dataclass
+class CartChange(BilkaDataClass):
+    """The outcome of setting one Product's quantity in the Cart."""
+
+    article_number: str
+    requested: int
+    """The quantity asked for in the Cart, after adding for `add_items_to_cart`."""
+    applied: int | None
+    """The quantity Bilka set, None when it set none or did not say."""
+    status: CartChangeStatus
+    message: str | None
+
+
+@dataclass
+class CartChanges(BilkaDataClass):
+    """Several Cart changes made one after another, with the Cart read once afterwards."""
+
+    changes: list[CartChange]
+    cart: Cart

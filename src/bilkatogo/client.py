@@ -1,4 +1,6 @@
 import json
+from asyncio import sleep
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from types import TracebackType
 from typing import Any, Self
@@ -12,6 +14,8 @@ from .const import (
     ALGOLIA_QUERIES_URL,
     ALGOLIA_SEARCH_KEY,
     API_BASE_URL,
+    CART_CHANGE_PAUSE_SECONDS,
+    CART_CHANGE_RETRY_DELAYS,
     CART_PARAMS,
     CURRENT_ORDER_SCAN_LIMIT,
     GIGYA_API_KEY,
@@ -34,13 +38,28 @@ from .exceptions import (
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
-from .models import Cart, Order, OrderDetails, OrderHistory, PickupPoint, Product, SearchSort
+from .models import (
+    Cart,
+    CartChange,
+    CartChanges,
+    CartChangeStatus,
+    Order,
+    OrderDetails,
+    OrderHistory,
+    PickupPoint,
+    Product,
+    SearchSort,
+)
 from .models.product import sort_products
 from .token_storage import TokenStorage
 
 
 def _order_number(order: str | Order) -> str:
     return order if isinstance(order, str) else order.order_number
+
+
+def _quantity_in(cart: Cart, article_number: str) -> int:
+    return sum(line.quantity for line in cart.lines if line.article_number == article_number)
 
 
 def _is_error_body(data: dict[str, Any]) -> bool:
@@ -58,6 +77,10 @@ def _is_session_expired(data: dict[str, Any]) -> bool:
     """
     uid = data.get("uid")
     return (isinstance(uid, int) and uid <= 0) or data.get("code") == 1
+
+
+class _ShopBusyError(UnexpectedResponseError):
+    """Bilka answered a shop call with HTTP 429 or 5xx, which may pass if tried again."""
 
 
 class _ShopRefusedError(UnexpectedResponseError):
@@ -182,6 +205,78 @@ class BilkaToGoClient:
         return await self._shop("GET", "shop/v6/Cart", CART_PARAMS)
 
     async def set_cart_quantity(self, article_number: str, quantity: int) -> Cart:
+        warnings = await self._change_line_count(article_number, quantity)
+        cart = await self.get_cart()
+        cart.warnings = warnings
+        return cart
+
+    async def set_cart_quantities(self, quantities: Mapping[str, int]) -> CartChanges:
+        """Set the quantity of several Products, one change after another, and read the Cart once.
+
+        A change Bilka rejects is reported and the rest go ahead. When Bilka stops answering,
+        even after retries, that change and the rest are skipped and the Cart shows what got
+        through; a change that reached Bilka before the answer was lost counts as applied.
+        """
+        items = list(quantities.items())
+        changes: list[CartChange] = []
+        lost: CartChange | None = None
+        for index, (article_number, quantity) in enumerate(items):
+            if index:
+                await sleep(CART_CHANGE_PAUSE_SECONDS)
+            try:
+                warnings = await self._change_line_count_retrying(article_number, quantity)
+            except CartChangeRejectedError as rejected:
+                changes.append(
+                    CartChange(
+                        article_number,
+                        quantity,
+                        rejected.applied,
+                        CartChangeStatus.REJECTED,
+                        str(rejected),
+                    )
+                )
+                continue
+            except (BilkaUnreachableError, _ShopBusyError) as failed:
+                lost = CartChange(
+                    article_number, quantity, None, CartChangeStatus.SKIPPED, str(failed)
+                )
+                changes.append(lost)
+                changes.extend(
+                    CartChange(article, count, None, CartChangeStatus.SKIPPED, None)
+                    for article, count in items[index + 1 :]
+                )
+                break
+            message = " ".join(warnings) or None
+            changes.append(
+                CartChange(article_number, quantity, quantity, CartChangeStatus.APPLIED, message)
+            )
+        cart = await self.get_cart()
+        if lost is not None and _quantity_in(cart, lost.article_number) == lost.requested:
+            lost.applied = lost.requested
+            lost.status = CartChangeStatus.APPLIED
+            lost.message = None
+        return CartChanges(changes=changes, cart=cart)
+
+    async def add_items_to_cart(self, items: Mapping[str, int]) -> CartChanges:
+        """Add several Products to what the Cart holds, by Article Number and quantity."""
+        cart = await self.get_cart()
+        return await self.set_cart_quantities(
+            {
+                article_number: _quantity_in(cart, article_number) + quantity
+                for article_number, quantity in items.items()
+            }
+        )
+
+    async def _change_line_count_retrying(self, article_number: str, quantity: int) -> list[str]:
+        for delay in CART_CHANGE_RETRY_DELAYS:
+            try:
+                return await self._change_line_count(article_number, quantity)
+            except BilkaUnreachableError, _ShopBusyError:
+                await sleep(delay)
+        return await self._change_line_count(article_number, quantity)
+
+    async def _change_line_count(self, article_number: str, quantity: int) -> list[str]:
+        """Set one Product's quantity; returns Bilka's warnings."""
         try:
             answer = await self._shop(
                 "GET",
@@ -212,9 +307,7 @@ class BilkaToGoClient:
                 quantity,
                 applied,
             )
-        cart = await self.get_cart()
-        cart.warnings = messages
-        return cart
+        return messages
 
     async def add_to_cart(self, article_number: str, quantity: int = 1) -> Cart:
         current = await self._cart_quantity(article_number)
@@ -227,11 +320,7 @@ class BilkaToGoClient:
         return await self.set_cart_quantity(article_number, max(current - quantity, 0))
 
     async def _cart_quantity(self, article_number: str) -> int:
-        return sum(
-            line.quantity
-            for line in (await self.get_cart()).lines
-            if line.article_number == article_number
-        )
+        return _quantity_in(await self.get_cart(), article_number)
 
     async def clear_cart(self) -> Cart:
         await self._shop("GET", "shop/v6/EmptyCart", CART_PARAMS)
@@ -325,6 +414,8 @@ class BilkaToGoClient:
         )
         if response.status_code == 401:
             return None
+        if response.status_code == 429 or response.status_code >= 500:
+            raise _ShopBusyError(f"{path} failed with HTTP {response.status_code}")
         if response.status_code != 200:
             raise UnexpectedResponseError(f"{path} failed with HTTP {response.status_code}")
         return self._json(response, path)

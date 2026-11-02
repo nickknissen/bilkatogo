@@ -1,5 +1,8 @@
 from .base import BilkaDataClass as BilkaDataClass
 from .cart import Cart as Cart
+from .cart import CartChange as CartChange
+from .cart import CartChanges as CartChanges
+from .cart import CartChangeStatus as CartChangeStatus
 from .cart import CartLine as CartLine
 from .order import Order as Order
 from .order import OrderHistory as OrderHistory
