@@ -19,6 +19,7 @@ from bilkatogo import (
     BilkaToGoError,
     Cart,
     CartChangeRejectedError,
+    CartChangeStatus,
     InvalidCredentialsError,
     NoPickupPointError,
     Product,
@@ -29,6 +30,7 @@ from .const import DOMAIN
 from .coordinator import BilkaToGoConfigEntry
 
 SERVICE_ADD_TO_CART = "add_to_cart"
+SERVICE_ADD_ITEMS_TO_CART = "add_items_to_cart"
 SERVICE_REMOVE_FROM_CART = "remove_from_cart"
 SERVICE_SEARCH = "search"
 SERVICE_GET_CART = "get_cart"
@@ -37,6 +39,7 @@ ATTR_ARTICLE_NUMBER = "article_number"
 ATTR_QUANTITY = "quantity"
 ATTR_QUERY = "query"
 ATTR_LIMIT = "limit"
+ATTR_ITEMS = "items"
 ATTR_IN_STOCK = "in_stock"
 ATTR_ON_OFFER = "on_offer"
 ATTR_IN_LEAFLET = "in_leaflet"
@@ -74,6 +77,24 @@ SEARCH_SCHEMA = probatio.Schema(
         probatio.Optional(ATTR_ON_OFFER, default=False): cv.boolean,
         probatio.Optional(ATTR_IN_LEAFLET, default=False): cv.boolean,
         probatio.Optional(ATTR_SORT, default=SearchSort.RELEVANCE): probatio.Coerce(SearchSort),
+    }
+)
+
+ITEM_SCHEMA = probatio.Schema(
+    {
+        probatio.Required(ATTR_ARTICLE_NUMBER): cv.string,
+        probatio.Optional(ATTR_QUANTITY, default=1): probatio.All(
+            probatio.Coerce(int), probatio.Range(min=1)
+        ),
+    }
+)
+
+ADD_ITEMS_TO_CART_SCHEMA = probatio.Schema(
+    {
+        probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        probatio.Required(ATTR_ITEMS): probatio.All(
+            cv.ensure_list, probatio.Length(min=1), [ITEM_SCHEMA]
+        ),
     }
 )
 
@@ -197,6 +218,42 @@ async def _remove_from_cart(call: ServiceCall) -> ServiceResponse:
     return _cart_response(cart) if call.return_response else None
 
 
+async def _add_items_to_cart(call: ServiceCall) -> ServiceResponse:
+    """Adds each item in turn. Items Bilka rejects or skips are in the response; the action
+    fails only when none was added."""
+    items: dict[str, int] = {}
+    for item in call.data[ATTR_ITEMS]:
+        article_number = item[ATTR_ARTICLE_NUMBER]
+        items[article_number] = items.get(article_number, 0) + item[ATTR_QUANTITY]
+    result = await _run(call, lambda client: client.add_items_to_cart(items))
+    if all(change.status is not CartChangeStatus.APPLIED for change in result.changes):
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="no_items_added",
+            translation_placeholders={
+                "error": "; ".join(
+                    f"{change.article_number}: {change.message or change.status.value}"
+                    for change in result.changes
+                )
+            },
+        )
+    if not call.return_response:
+        return None
+    return {
+        "changes": [
+            {
+                "article_number": change.article_number,
+                "requested": change.requested,
+                "applied": change.applied,
+                "status": change.status.value,
+                "message": change.message,
+            }
+            for change in result.changes
+        ],
+        "cart": _cart_response(result.cart),
+    }
+
+
 async def _search(call: ServiceCall) -> ServiceResponse:
     products = await _run(
         call,
@@ -223,6 +280,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_ADD_TO_CART,
         _add_to_cart,
         schema=ADD_TO_CART_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_ITEMS_TO_CART,
+        _add_items_to_cart,
+        schema=ADD_ITEMS_TO_CART_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(

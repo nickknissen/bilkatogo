@@ -208,6 +208,9 @@
     },
     "action_failed": {
       "message": "Bilka kunne ikke gennemføre handlingen: {error}"
+    },
+    "no_items_added": {
+      "message": "Bilka lagde ingen af varerne i kurven: {error}"
     }
   },
   "selector": {
@@ -235,6 +238,20 @@
         "quantity": {
           "name": "Antal",
           "description": "Hvor mange der skal lægges i kurven."
+        }
+      }
+    },
+    "add_items_to_cart": {
+      "name": "Læg varer i kurven",
+      "description": "Lægger flere varer i din BilkaToGo-kurv, én ad gangen, oven i det, der allerede er der. Varer, Bilka afviser, står i svaret; handlingen fejler kun, hvis ingen kunne lægges i kurven.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
+        },
+        "items": {
+          "name": "Varer",
+          "description": "En liste af varer, hver med article_number og et valgfrit quantity (standard 1)."
         }
       }
     },

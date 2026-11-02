@@ -710,6 +710,94 @@ def test_cart_add_defaults_to_one(invoke, logged_in_cart: FakeBilka) -> None:
     assert "Skyr m. vanilje" in result.output
 
 
+@pytest.fixture
+def no_pauses(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def sleep(seconds: float) -> None:
+        pass
+
+    monkeypatch.setattr("bilkatogo.client.sleep", sleep)
+
+
+def change_rows(output: str) -> dict[str, str]:
+    table, _, _ = output.partition("\n\n")
+    return search_rows(table)
+
+
+@pytest.mark.usefixtures("no_pauses")
+def test_cart_add_items_adds_each_and_prints_the_results_and_cart(
+    invoke, logged_in_cart: FakeBilka
+) -> None:
+    result = invoke(
+        "cart", "add-items", "18381:2", "19753", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    counts = [request.url.params["count"] for request in logged_in_cart.calls("change_line_count")]
+    assert counts == ["12", "1"]
+    rows = change_rows(result.output)
+    assert rows["18381"].split()[1:3] == ["12", "applied"]
+    assert rows["19753"].split()[1:3] == ["1", "applied"]
+    assert "Cart Total" in result.output
+
+
+@pytest.mark.usefixtures("no_pauses")
+def test_cart_add_items_reports_a_rejection_and_fails_after_adding_the_rest(
+    invoke, logged_in_cart: FakeBilka
+) -> None:
+    logged_in_cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
+
+    result = invoke(
+        "cart", "add-items", "88672", "19753:2", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 1
+    rows = change_rows(result.output)
+    assert "rejected" in rows["88672"]
+    assert "ikke aktuelt tilgængeligt" in rows["88672"]
+    assert rows["19753"].split()[1:3] == ["2", "applied"]
+    assert "Cart Total" in result.output
+
+
+@pytest.mark.usefixtures("no_pauses")
+def test_cart_add_items_json(invoke, logged_in_cart: FakeBilka) -> None:
+    result = invoke(
+        "cart",
+        "add-items",
+        "19753",
+        "--quantity",
+        "3",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+        "--json",
+    )
+
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["changes"] == [
+        {
+            "article_number": "19753",
+            "requested": 3,
+            "applied": 3,
+            "status": "applied",
+            "message": None,
+        }
+    ]
+    assert data["cart"]["pickup_point"]["name"] == "Bilka Vejle"
+
+
+@pytest.mark.parametrize("item", ["18381:x", "18381:0", ":2"])
+def test_cart_add_items_refuses_a_malformed_item(
+    invoke, logged_in_cart: FakeBilka, item: str
+) -> None:
+    result = invoke("cart", "add-items", item, "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 1
+    assert "ARTICLE:QUANTITY" in result.output
+    assert logged_in_cart.calls("change_line_count") == []
+
+
 def test_cart_remove_drops_the_cart_line(invoke, logged_in_cart: FakeBilka) -> None:
     result = invoke("cart", "remove", "18364", "--email", EMAIL, "--password", PASSWORD)
 

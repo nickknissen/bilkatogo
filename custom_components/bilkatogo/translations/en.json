@@ -208,6 +208,9 @@
     },
     "action_failed": {
       "message": "Bilka could not complete the action: {error}"
+    },
+    "no_items_added": {
+      "message": "Bilka added none of the products: {error}"
     }
   },
   "selector": {
@@ -235,6 +238,20 @@
         "quantity": {
           "name": "Quantity",
           "description": "How many to add."
+        }
+      }
+    },
+    "add_items_to_cart": {
+      "name": "Add items to cart",
+      "description": "Adds several products to your BilkaToGo cart, one after another, on top of what is already there. Products Bilka rejects are listed in the response; the action fails only when none could be added.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The BilkaToGo account to use. Only needed when more than one is added."
+        },
+        "items": {
+          "name": "Items",
+          "description": "A list of products, each with article_number and an optional quantity (default 1)."
         }
       }
     },

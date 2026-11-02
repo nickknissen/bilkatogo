@@ -94,6 +94,14 @@ asyncio.run(main())
   `Cart.warnings` (e.g. asking you to call customer service before ordering 99). When Bilka
   applies a different quantity than asked, they raise `CartChangeRejectedError` with Bilka's
   message. The client never places an Order.
+- `set_cart_quantities({article_number: quantity, ...})` and `add_items_to_cart({article_number:
+  quantity, ...})` change several Products one after another, a short pause apart, and read the
+  Cart once at the end. They return `CartChanges`: the `cart` and one `CartChange` per Product
+  with the quantity `requested` (after adding, for `add_items_to_cart`), the quantity `applied`,
+  a `status` (`applied`, `rejected` or `skipped`) and Bilka's `message`. A rejected Product does
+  not stop the rest. A change Bilka does not answer, or answers with HTTP 429 or 5xx, is tried
+  again up to three times; if it still fails, it and the rest are `skipped` and the Cart shows
+  what got through.
 - Logging in on the website or in the app can undo Cart changes made through the library: Bilka
   replaces the Cart with the one that browser or app saw at its previous login, kept for up to
   7 days. Check the Cart after logging in there if you changed it from here.
@@ -124,6 +132,7 @@ bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best m
 bilkatogo search kaffe --on-offer --in-leaflet  # Offers and Multibuy Offers in this week's Leaflet
 bilkatogo cart                  # your Cart Lines, the Cart total and your Pickup Point
 bilkatogo cart add 18381 --quantity 2   # add 2 of a Product by Article Number
+bilkatogo cart add-items 18381:10 19753 140787:2   # add several; 19753 gets --quantity (1)
 bilkatogo cart set 18381 5      # hold exactly 5
 bilkatogo cart remove 18381 --quantity 2   # take 2 off the Cart Line
 bilkatogo cart remove 18381     # take it out of the Cart
@@ -131,7 +140,8 @@ bilkatogo cart remove 18381     # take it out of the Cart
 
 `cart add`, `set` and `remove` change the Cart without asking and print the updated Cart and any
 warning from Bilka. When Bilka applies a different quantity than asked they print Bilka's
-message and exit 1. There is no command to empty the Cart. Logging in on the website or in the
+message and exit 1. `cart add-items` prints a line per Product with its result, then the Cart,
+and exits 1 when any Product was rejected or skipped. There is no command to empty the Cart. Logging in on the website or in the
 app afterwards can undo these changes (see the Library section).
 
 Every command accepts `--json` for machine-readable output.
@@ -252,6 +262,7 @@ Order Status sensor shows the status.
 | Action | Fields | Response |
 |---|---|---|
 | `bilkatogo.add_to_cart` | `article_number`, `quantity` (default 1) | Optional: the Cart, with its Cart Lines (Product, Article Number, quantity, Price, line total), total, Deposit, Service Fee, Packaging, Discount, Pickup Point and Bilka's warnings |
+| `bilkatogo.add_items_to_cart` | `items`: a list of `article_number` and `quantity` (default 1) | Optional: `changes`, per Product the quantity requested and applied, `status` (`applied`, `rejected`, `skipped`) and Bilka's message; and the `cart`, as for `add_to_cart`. Fails only when none was added |
 | `bilkatogo.remove_from_cart` | `article_number`, `quantity` (default: all of it) | Optional: the Cart, as for `add_to_cart` |
 | `bilkatogo.search` | `query`, `limit` (default 10), `in_stock`, `on_offer`, `in_leaflet` (default false), `sort` (`relevance`, `price`, `unit_price`) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
 | `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
@@ -275,6 +286,29 @@ script:
       - action: bilkatogo.add_to_cart
         data:
           article_number: "{{ found.products[0].article_number }}"
+```
+
+A script that adds a weekly basket in one go and notifies about anything Bilka rejected:
+
+```yaml
+script:
+  weekly_basket:
+    sequence:
+      - action: bilkatogo.add_items_to_cart
+        data:
+          items:
+            - article_number: "18381"
+              quantity: 10
+            - article_number: "19753"
+              quantity: 2
+        response_variable: added
+      - if: "{{ added.changes | rejectattr('status', 'eq', 'applied') | list | count > 0 }}"
+        then:
+          - action: notify.notify
+            data:
+              message: >-
+                Not added: {{ added.changes | rejectattr('status', 'eq', 'applied')
+                | map(attribute='article_number') | join(', ') }}
 ```
 
 ### Substitution and Missing item events
