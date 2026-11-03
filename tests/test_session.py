@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 
 from bilkatogo import BilkaToGoClient, BilkaUnreachableError, UnexpectedResponseError
 from tests.conftest import MemoryTokenStorage
@@ -180,14 +181,59 @@ async def test_an_error_body_that_is_not_an_expired_session_raises_without_loggi
     assert len(bilka.calls("gigya_login")) == 1
 
 
-@pytest.mark.asyncio
-async def test_stored_session_about_to_expire_is_renewed_before_the_shop_call(
-    bilka: FakeBilka, storage: MemoryTokenStorage
-) -> None:
-    await log_in(bilka, storage)
+LOGGED_IN_AT = [
+    datetime(2026, 11, 2, 22, 30, tzinfo=UTC),  # 23:30 in Copenhagen, so it expires a day later
+    datetime(2027, 12, 31, 23, 58, tzinfo=UTC),  # expires in the next year
+    datetime(2028, 2, 28, 23, 57, tzinfo=UTC),  # expires on a leap day
+]
+LOGGED_IN_IDS = ["next_day_in_copenhagen", "next_year", "leap_day"]
+# Gigya is asked for a JWT that lasts 86400 seconds (test_client); it is renewed 5 minutes early.
+JWT_LIFETIME = timedelta(hours=24)
+
+
+def stored_expiry(storage: MemoryTokenStorage) -> datetime:
     assert storage.data is not None
-    soon = datetime.now(UTC) + timedelta(minutes=2)
-    storage.data["jwt_expires_at"] = soon.isoformat()
+    return datetime.fromisoformat(storage.data["jwt_expires_at"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("logged_in_at", LOGGED_IN_AT, ids=LOGGED_IN_IDS)
+async def test_a_login_stores_a_session_that_expires_24_hours_later(
+    bilka: FakeBilka,
+    storage: MemoryTokenStorage,
+    freezer: FrozenDateTimeFactory,
+    logged_in_at: datetime,
+) -> None:
+    freezer.move_to(logged_in_at)
+
+    await log_in(bilka, storage)
+
+    assert stored_expiry(storage) == logged_in_at + JWT_LIFETIME
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("logged_in_at", LOGGED_IN_AT, ids=LOGGED_IN_IDS)
+@pytest.mark.parametrize(
+    ("used_after", "logs_in_again"),
+    [
+        (JWT_LIFETIME - timedelta(minutes=5, seconds=1), False),
+        (JWT_LIFETIME - timedelta(minutes=5), True),
+        (JWT_LIFETIME + timedelta(seconds=1), True),
+    ],
+    ids=["just_before_renewal", "at_renewal", "after_expiry"],
+)
+async def test_a_stored_session_is_renewed_5_minutes_before_it_expires(
+    bilka: FakeBilka,
+    storage: MemoryTokenStorage,
+    freezer: FrozenDateTimeFactory,
+    logged_in_at: datetime,
+    used_after: timedelta,
+    logs_in_again: bool,
+) -> None:
+    freezer.move_to(logged_in_at)
+    await log_in(bilka, storage)
+    used_at = logged_in_at + used_after
+    freezer.move_to(used_at)
 
     async with (
         bilka.client() as http,
@@ -195,9 +241,10 @@ async def test_stored_session_about_to_expire_is_renewed_before_the_shop_call(
     ):
         await client.get_orders()
 
-    assert len(bilka.calls("gigya_login")) == 2
+    assert len(bilka.calls("gigya_login")) == (2 if logs_in_again else 1)
     assert len(bilka.calls("order_history")) == 1
-    assert datetime.fromisoformat(storage.data["jwt_expires_at"]) > soon + timedelta(hours=23)
+    renewed_at = used_at if logs_in_again else logged_in_at
+    assert stored_expiry(storage) == renewed_at + JWT_LIFETIME
 
 
 @pytest.mark.asyncio

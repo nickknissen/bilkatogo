@@ -30,7 +30,9 @@ type BilkaToGoConfigEntry = ConfigEntry[BilkaToGoCoordinator]
 def polling_interval(order: Order | None, now: datetime) -> timedelta:
     if order is None or order.pickup_slot is None or order.finished:
         return UPDATE_INTERVAL
-    until_fast = order.pickup_slot.starts_at - FAST_UPDATE_LEAD_TIME - now
+    # Subtract `now` first: a Copenhagen time minus a timedelta is wall-clock arithmetic,
+    # which is an hour off across a change to or from summer time.
+    until_fast = order.pickup_slot.starts_at - now - FAST_UPDATE_LEAD_TIME
     if until_fast <= timedelta(0):
         return FAST_UPDATE_INTERVAL
     return min(UPDATE_INTERVAL, until_fast)
