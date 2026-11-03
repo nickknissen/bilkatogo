@@ -66,6 +66,23 @@ def _redact_paths(data: dict[str, Any], paths: tuple[tuple[str, ...], ...]) -> d
     return data
 
 
+# Order Numbers identify the customer's account, so each one is replaced by a label that
+# stays the same across the file, which keeps an announced substitution tied to its order.
+ORDER_NUMBER_KEYS = {"order_number", "orderId"}
+
+
+def _label_order_numbers(node: Any, labels: dict[str, str]) -> None:
+    if isinstance(node, list):
+        for item in node:
+            _label_order_numbers(item, labels)
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            if key in ORDER_NUMBER_KEYS and isinstance(value, str | int):
+                node[key] = labels.setdefault(str(value), f"order_{len(labels) + 1}")
+            else:
+                _label_order_numbers(value, labels)
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: BilkaToGoConfigEntry
 ) -> dict[str, Any]:
@@ -77,4 +94,5 @@ async def async_get_config_entry_diagnostics(
         },
         TO_REDACT,
     )
+    _label_order_numbers(diagnostics, {})
     return _redact_paths(diagnostics, CUSTOMER_NAME_PATHS)
