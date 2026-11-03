@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.components.diagnostics import (
@@ -63,4 +63,10 @@ async def test_diagnostics_keep_products_and_store_but_redact_personal_data(
     values = set(leaves(diagnostics))
     assert values & PERSONAL_DATA == set()
     assert {"Æbler", "Pærer", "Letmælk", "Minimælk", "Bilka Eksempelby"} <= values
+    assert not [value for value in values if ORDER_NUMBER in str(value)]
+    data = cast("dict[str, Any]", diagnostics["data"])
+    assert data["order"]["order_number"] == "order_1"
+    assert data["details"]["order_number"] == "order_1"
+    assert data["details"]["_raw"]["orderId"] == "order_1"
+    assert {s["order_number"] for s in data["announced"]["substitution"]} == {"order_1"}
     assert diagnostics == snapshot(exclude=VOLATILE)

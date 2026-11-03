@@ -7,7 +7,7 @@
         ]),
         'substitution': list([
           dict({
-            'order_number': '900000000001',
+            'order_number': 'order_1',
             'ordered_quantity': 4,
             'original_article_number': '1001',
             'original_product': 'Æbler',
@@ -16,7 +16,7 @@
             'replacement_product': 'Pærer',
           }),
           dict({
-            'order_number': '900000000001',
+            'order_number': 'order_1',
             'ordered_quantity': 2,
             'original_article_number': '1004',
             'original_product': 'Letmælk',
@@ -114,7 +114,7 @@
               'type': '',
             }),
           ]),
-          'orderId': '900000000001',
+          'orderId': 'order_1',
           'price': 50900,
           'stat': dict({
             'has_replacements': True,
@@ -233,7 +233,7 @@
         ]),
         'missing_items': list([
         ]),
-        'order_number': '900000000001',
+        'order_number': 'order_1',
         'order_total': dict({
           '__type': "<class 'decimal.Decimal'>",
           'repr': "Decimal('509.00')",
@@ -362,7 +362,7 @@
             'start': '12:00:00',
           }),
           'name': '**REDACTED**',
-          'orderId': '900000000001',
+          'orderId': 'order_1',
           'ordered': dict({
             'channel': 'Web',
             'date': '2026-10-26',
@@ -382,7 +382,7 @@
         'content': 'Æbler, Rugbrød',
         'delivered': True,
         'home_delivery': False,
-        'order_number': '900000000001',
+        'order_number': 'order_1',
         'order_total': dict({
           '__type': "<class 'decimal.Decimal'>",
           'repr': "Decimal('509.00')",
@@ -441,7 +441,7 @@
               'start': '12:00:00',
             }),
             'name': '**REDACTED**',
-            'orderId': '900000000001',
+            'orderId': 'order_1',
             'ordered': dict({
               'channel': 'Web',
               'date': '2026-10-26',
@@ -461,7 +461,7 @@
           'content': 'Æbler, Rugbrød',
           'delivered': True,
           'home_delivery': False,
-          'order_number': '900000000001',
+          'order_number': 'order_1',
           'order_total': dict({
             '__type': "<class 'decimal.Decimal'>",
             'repr': "Decimal('509.00')",
