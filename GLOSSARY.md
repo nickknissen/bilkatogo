@@ -116,8 +116,12 @@ _Avoid_: Replacement (on its own), swap, erstatningsvare (use only as the Danish
 The product the customer ordered on a Substituted Order Line.
 
 **Replacement Product**:
-The product Bilka packed instead of the Original Product, e.g. Kiwi instead of Blommer.
+The product Bilka packed instead of the Original Product, e.g. Kiwi instead of Blommer. When it is dearer, Bilka charges the Original Product's price for it: its line total (Bilka's `amount`) can be lower than its Price.
 _Avoid_: Erstatningsvare in code
+
+**Size**:
+How much one unit of a Product holds, e.g. 750 g or 1,5 l. Bilka's `product.units` and `product.unitsOfMeasure`. A Replacement Product often has the Original Product's name and differs only in Size, e.g. Klementiner 750 g replaced by Klementiner 900 g.
+_Avoid_: Weight, volume, pack size
 
 **Missing Item**:
 An Order Line Bilka packed fewer of than ordered without a Replacement Product, e.g. 2 of 4 skyr. It carries the missing quantity. Distinct from a Substitution. An Order where nothing at all could be packed has the Order Status Sold Out.

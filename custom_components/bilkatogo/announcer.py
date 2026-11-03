@@ -15,10 +15,14 @@ def substitution_data(substitution: Substitution) -> dict[str, Any]:
     return {
         "original_product": substitution.original_product,
         "original_article_number": substitution.original_article_number,
+        "original_size": substitution.original_size,
         "ordered_quantity": substitution.ordered_quantity,
         "replacement_product": substitution.replacement_product,
         "replacement_article_number": substitution.replacement_article_number,
+        "replacement_size": substitution.replacement_size,
         "quantity": substitution.quantity,
+        "replacement_price": float(substitution.replacement_price),
+        "replacement_line_total": float(substitution.replacement_line_total),
     }
 
 

@@ -94,6 +94,7 @@ class FakeBilka:
                     "order_details_plain.json",
                     "order_details_missing.json",
                     "order_details_captured.json",
+                    "order_details_substituted_captured.json",
                 ],
             )
         }

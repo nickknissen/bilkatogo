@@ -23,18 +23,26 @@ SUBSTITUTIONS = [
     {
         "original_product": "Æbler",
         "original_article_number": "1001",
+        "original_size": "1 kg",
         "ordered_quantity": 4,
         "replacement_product": "Pærer",
         "replacement_article_number": "1002",
+        "replacement_size": "750 g",
         "quantity": 4,
+        "replacement_price": 4.0,
+        "replacement_line_total": 12.0,
     },
     {
         "original_product": "Letmælk",
         "original_article_number": "1004",
+        "original_size": "1 l",
         "ordered_quantity": 2,
         "replacement_product": "Minimælk",
         "replacement_article_number": "1005",
+        "replacement_size": "0,5 l",
         "quantity": 3,
+        "replacement_price": 6.5,
+        "replacement_line_total": 19.5,
     },
 ]
 

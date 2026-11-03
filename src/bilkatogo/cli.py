@@ -247,6 +247,10 @@ def format_amount(amount: Decimal | None) -> str:
     return "" if amount is None else f"{amount:.2f} kr"
 
 
+def sized(product: str, size: str) -> str:
+    return f"{product} {size}" if size else product
+
+
 def format_status(status: OrderStatus) -> str:
     return status.name.replace("_", " ").title()
 
@@ -309,8 +313,10 @@ async def order(
     print_list(
         "Substitutions",
         [
-            f"{substitution.ordered_quantity} x {substitution.original_product} -> "
-            f"{substitution.quantity} x {substitution.replacement_product}"
+            f"{substitution.ordered_quantity} x "
+            f"{sized(substitution.original_product, substitution.original_size)} -> "
+            f"{substitution.quantity} x "
+            f"{sized(substitution.replacement_product, substitution.replacement_size)}"
             for substitution in details.substitutions
         ],
     )

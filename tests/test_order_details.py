@@ -2,6 +2,7 @@ import json
 import logging
 from datetime import date, time
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
@@ -11,6 +12,7 @@ from bilkatogo import (
     OrderDetails,
     OrderNotFoundError,
     OrderStatus,
+    Substitution,
 )
 from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka
 
@@ -75,14 +77,52 @@ async def test_substitutions_pair_original_and_replacement_product(bilka: FakeBi
             s.replacement_product,
             s.replacement_article_number,
             s.quantity,
+            s.replacement_line_total,
         )
         for s in details.substitutions
     ] == [
-        ("Æbler", "1001", 4, "Pærer", "1002", 4),
-        ("Letmælk", "1004", 2, "Minimælk", "1005", 3),
+        ("Æbler", "1001", 4, "Pærer", "1002", 4, Decimal("12.00")),
+        ("Letmælk", "1004", 2, "Minimælk", "1005", 3, Decimal("19.50")),
     ]
     assert details.lines[0].substituted is True
     assert details.substitutions[0]._raw == details.lines[0]._raw
+
+
+@pytest.mark.asyncio
+async def test_captured_substitution_has_sizes_and_prices(bilka: FakeBilka) -> None:
+    # Captured 2026-11-03: 750 g Klementiner replaced by the dearer 900 g bag at the
+    # Original Product's price.
+    details = await fetch(bilka, "900000000005")
+
+    assert [dict(s) for s in details.substitutions] == [
+        {
+            "original_product": "Klementiner",
+            "original_article_number": "74009",
+            "original_size": "750 g",
+            "ordered_quantity": 1,
+            "replacement_product": "Klementiner",
+            "replacement_article_number": "29516",
+            "replacement_size": "900 g",
+            "quantity": 1,
+            "replacement_price": Decimal("28.00"),
+            "replacement_line_total": Decimal("15.00"),
+        }
+    ]
+    assert [line.substituted for line in details.lines] == [True, False]
+    assert details.missing_items == []
+
+
+@pytest.mark.parametrize(
+    ("units", "unit_of_measure", "size"),
+    [(None, "g", ""), (500, None, ""), (0, "g", ""), (1.5, "l", "1,5 l"), (6, "stk", "6 stk")],
+)
+def test_substitution_size(units: Any, unit_of_measure: str | None, size: str) -> None:
+    product = {"objectID": 1, "name": "Vare", "units": units, "unitsOfMeasure": unit_of_measure}
+    line = {"quantity": 1, "product": product, "children": [{"quantity": 1, "product": product}]}
+
+    substitution = Substitution.from_dict(line)
+
+    assert (substitution.original_size, substitution.replacement_size) == (size, size)
 
 
 @pytest.mark.asyncio
