@@ -83,6 +83,8 @@ PERSONAL_VALUES = [
     "73914862",
     "4817263",
     "c0ffee00-1234-4abc-9def-0123456789ab",
+    "61 23 45 67",
+    "+45 87654321",
     *(value for key, value in HOME_ADDRESS.items() if key not in {"zip", "zipCode"}),
 ]
 
@@ -94,6 +96,11 @@ def home_delivered_order() -> dict:
     order["deliveryAddress"].update(HOME_ADDRESS, home_delivery=True, order_pickup_code="73914862")
     order["customer"] = {"uid": 4817263, "tid": "c0ffee00-1234-4abc-9def-0123456789ab"}
     order["note"] = f"Ordre {ORDER_NUMBER} til karen.kundesen@gmail.example"
+    # Bilka writes the phone number into the receipt text without a phone field to match.
+    order["receipt_content"] = {
+        "pickup_body": "får du en sms på <b>61 23 45 67</b> med en påmindelse",
+        "help": "Ring til +45 87654321",
+    }
     return details
 
 
@@ -115,6 +122,10 @@ def test_redacted_order_capture_contains_no_personal_values(invoke, bilka: FakeB
     assert order["deliveryAddress"]["email"] == "kunde@example.com"
     assert order["customer"] == {"uid": 900001, "tid": "00000000-0000-0000-0000-000000000000"}
     assert order["note"] == "Ordre 900000000001 til kunde@example.com"
+    assert order["receipt_content"] == {
+        "pickup_body": "får du en sms på <b>12345678</b> med en påmindelse",
+        "help": "Ring til 12345678",
+    }
     assert order["lines"] == original["order"]["lines"]
     assert order["stat"] == original["order"]["stat"]
 
