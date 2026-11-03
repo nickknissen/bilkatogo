@@ -86,5 +86,8 @@ rules:
   async-dependency: done
   inject-websession:
     status: done
-    comment: Uses create_async_httpx_client, because Bilka's session lives in cookies.
+    comment: >-
+      Uses create_async_httpx_client, not the shared client. Bilka sets cart and PHPSESSID
+      cookies on Cart changes, and a client of its own keeps one account's cookies away from
+      other accounts and integrations. It also sets the library's 30 s timeout.
   strict-typing: done
