@@ -535,6 +535,7 @@ dev = [
     { name = "bilkatogo", extra = ["cli"], marker = "extra == 'group-9-bilkatogo-dev'" },
     { name = "pytest", version = "9.1.1", source = { registry = "https://pypi.org/simple" } },
     { name = "pytest-asyncio", version = "1.4.1", source = { registry = "https://pypi.org/simple" } },
+    { name = "pytest-freezer" },
     { name = "ruff" },
     { name = "ty" },
 ]
@@ -558,6 +559,7 @@ dev = [
     { name = "bilkatogo", extras = ["cli"] },
     { name = "pytest", specifier = ">=9.0.0" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "pytest-freezer", specifier = ">=0.4.9" },
     { name = "ruff", specifier = ">=0.16.1" },
     { name = "ty", specifier = ">=0.0.92" },
 ]
@@ -2604,11 +2606,11 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "iniconfig" },
-    { name = "packaging" },
-    { name = "pluggy" },
-    { name = "pygments" },
+    { name = "colorama", marker = "(sys_platform == 'win32' and extra == 'group-9-bilkatogo-ha') or (extra == 'group-9-bilkatogo-dev' and extra == 'group-9-bilkatogo-ha')" },
+    { name = "iniconfig", marker = "extra == 'group-9-bilkatogo-ha'" },
+    { name = "packaging", marker = "extra == 'group-9-bilkatogo-ha'" },
+    { name = "pluggy", marker = "extra == 'group-9-bilkatogo-ha'" },
+    { name = "pygments", marker = "extra == 'group-9-bilkatogo-ha'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7d/0d/549bd94f1a0a402dc8cf64563a117c0f3765662e2e668477624baeec44d5/pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c", size = 1572165, upload-time = "2026-04-07T17:16:18.027Z" }
 wheels = [
@@ -2620,11 +2622,11 @@ name = "pytest"
 version = "9.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
-    { name = "iniconfig" },
-    { name = "packaging" },
-    { name = "pluggy" },
-    { name = "pygments" },
+    { name = "colorama", marker = "(sys_platform == 'win32' and extra == 'group-9-bilkatogo-dev') or (extra == 'group-9-bilkatogo-dev' and extra == 'group-9-bilkatogo-ha')" },
+    { name = "iniconfig", marker = "extra == 'group-9-bilkatogo-dev'" },
+    { name = "packaging", marker = "extra == 'group-9-bilkatogo-dev'" },
+    { name = "pluggy", marker = "extra == 'group-9-bilkatogo-dev'" },
+    { name = "pygments", marker = "extra == 'group-9-bilkatogo-dev'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e4/47/b9efed96c114afcfa3c9d3fe98a76a1d14c74a9e266d397cf6eb64be5e01/pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313", size = 1636369, upload-time = "2026-06-19T10:58:32.857Z" }
 wheels = [
@@ -2718,7 +2720,8 @@ version = "0.4.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "freezegun" },
-    { name = "pytest", version = "9.0.3", source = { registry = "https://pypi.org/simple" } },
+    { name = "pytest", version = "9.0.3", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-9-bilkatogo-ha'" },
+    { name = "pytest", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'group-9-bilkatogo-dev'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/81/f0/98dcbc5324064360b19850b14c84cea9ca50785d921741dbfc442346e925/pytest_freezer-0.4.9.tar.gz", hash = "sha256:21bf16bc9cc46bf98f94382c4b5c3c389be7056ff0be33029111ae11b3f1c82a", size = 3177, upload-time = "2024-12-12T08:53:08.684Z" }
 wheels = [

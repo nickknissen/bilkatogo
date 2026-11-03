@@ -165,6 +165,19 @@ async def test_on_during_a_slot_with_the_current_event(
     assert state.attributes["description"] == "#900000000001"
 
 
+async def test_off_with_the_next_event_once_a_slot_ends(
+    hass: HomeAssistant, setup_integration: SetupIntegration, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-10-27T14:00:00+01:00")
+    entry = await setup_integration()
+
+    state = hass.states.get(calendar_id(hass, entry))
+
+    assert state is not None
+    assert state.state == STATE_OFF
+    assert state.attributes["description"] == "#900000000002"
+
+
 async def test_off_without_an_event_after_the_last_slot(
     hass: HomeAssistant, setup_integration: SetupIntegration, freezer: FrozenDateTimeFactory
 ) -> None:
