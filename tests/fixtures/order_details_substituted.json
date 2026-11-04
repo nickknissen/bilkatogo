@@ -24,13 +24,13 @@
               {
                 "quantity": 4,
                 "amount": 1200,
-                "product": {"objectID": 1001, "name": "Æbler"},
+                "product": {"objectID": 1001, "name": "Æbler", "price": 300, "units": 1, "unitsOfMeasure": "kg"},
                 "unavailable_reason": "",
                 "replacement": null,
                 "strikethrough": true,
                 "tagline": "erstattet",
                 "children": [
-                  {"quantity": 4, "amount": 1200, "product": {"objectID": 1002, "name": "Pærer"}}
+                  {"quantity": 4, "amount": 1200, "product": {"objectID": 1002, "name": "Pærer", "price": 400, "units": 750, "unitsOfMeasure": "g"}}
                 ]
               },
               {
@@ -56,13 +56,13 @@
               {
                 "quantity": 2,
                 "amount": 1100,
-                "product": {"objectID": 1004, "name": "Letmælk"},
+                "product": {"objectID": 1004, "name": "Letmælk", "price": 550, "units": 1, "unitsOfMeasure": "l"},
                 "unavailable_reason": "",
                 "replacement": null,
                 "strikethrough": true,
                 "tagline": "erstattet",
                 "children": [
-                  {"quantity": 3, "amount": 1950, "product": {"objectID": 1005, "name": "Minimælk"}}
+                  {"quantity": 3, "amount": 1950, "product": {"objectID": 1005, "name": "Minimælk", "price": 650, "units": 0.5, "unitsOfMeasure": "l"}}
                 ]
               }
             ]

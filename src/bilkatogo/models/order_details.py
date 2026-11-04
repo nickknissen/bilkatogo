@@ -35,24 +35,36 @@ MISSING_ITEM_SHAPE_ISSUE = "https://github.com/nickknissen/bilkatogo/issues/27"
 class Substitution(BilkaDataClass):
     original_product: str
     original_article_number: str
+    original_size: str
     ordered_quantity: int
     replacement_product: str
     replacement_article_number: str
+    replacement_size: str
     quantity: int
+    replacement_price: Decimal
+    replacement_line_total: Decimal
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Substitution:
-        """Build from an Order Line that `_classify` found to be a Substitution."""
+        """Build from an Order Line that `_classify` found to be a Substitution.
+
+        The Replacement Product's line total is what the customer pays for it, which can be
+        less than its Price: Bilka charges the Original Product's price for a dearer one.
+        """
         replacement = data["children"][0]
         return cls(
             _raw=data,
             original_product=_product_name(data),
             original_article_number=_article_number(data),
+            original_size=_size(data),
             ordered_quantity=int(data.get("quantity") or 0),
             replacement_product=_product_name(replacement),
             replacement_article_number=_article_number(replacement),
+            replacement_size=_size(replacement),
             quantity=int(replacement.get("quantity") or 0),
+            replacement_price=kroner((replacement.get("product") or {}).get("price")),
+            replacement_line_total=kroner(replacement.get("amount")),
         )
 
 
@@ -212,6 +224,19 @@ def _product_name(data: dict[str, Any]) -> str:
 
 def _article_number(data: dict[str, Any]) -> str:
     return str((data.get("product") or {}).get("objectID") or "")
+
+
+def _size(data: dict[str, Any]) -> str:
+    """The Product's size as the website shows it, e.g. "750 g" or "1,5 l"."""
+    product = data.get("product") or {}
+    unit = product.get("unitsOfMeasure") or ""
+    try:
+        units = Decimal(str(product.get("units") or 0))
+    except ArithmeticError:
+        return ""
+    if not unit or not units.is_finite() or units <= 0:
+        return ""
+    return f"{units.normalize():f}".replace(".", ",") + f" {unit}"
 
 
 def _quantity(value: Any) -> int:

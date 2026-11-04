@@ -294,11 +294,22 @@ def test_order_prints_details_and_substitutions(invoke, bilka: FakeBilka) -> Non
         "Delivery Fee  0.00 kr",
         "Discount      0.00 kr",
         "Substitutions",
-        "  4 x Æbler -> 4 x Pærer",
-        "  2 x Letmælk -> 3 x Minimælk",
+        "  4 x Æbler 1 kg -> 4 x Pærer 750 g",
+        "  2 x Letmælk 1 l -> 3 x Minimælk 0,5 l",
         "Missing Items none",
     ]
     assert len(bilka.calls("gigya_login")) == 1
+
+
+def test_order_shows_sizes_when_the_replacement_has_the_same_name(invoke) -> None:
+    result = invoke("order", "900000000005", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert (
+        lines[lines.index("Substitutions") + 1]
+        == "  1 x Klementiner 750 g -> 1 x Klementiner 900 g"
+    )
 
 
 def test_order_shows_the_order_total_breakdown(invoke) -> None:
@@ -400,10 +411,14 @@ def test_order_json_output(invoke) -> None:
     assert details["substitutions"][0] == {
         "original_product": "Æbler",
         "original_article_number": "1001",
+        "original_size": "1 kg",
         "ordered_quantity": 4,
         "replacement_product": "Pærer",
         "replacement_article_number": "1002",
+        "replacement_size": "750 g",
         "quantity": 4,
+        "replacement_price": "4.00",
+        "replacement_line_total": "12.00",
     }
     assert details["lines"][1] == {
         "category": "Frugt & grønt",
