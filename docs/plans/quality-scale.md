@@ -85,8 +85,9 @@ Each step is a small PR. Run `uv run python scripts/check.py` and `scripts/ha-te
 3. **Devices and icons.** Add `configuration_url` to `DeviceInfo`. Add icons for `binary_sensor.ready_for_pickup` (`mdi:basket-check` when on, `mdi:basket-outline` when off) and the calendar. Give `order_status` state icons and remove the redundant `order_total` and `pickup_slot` icons.
 4. **Documentation (README).** Add the missing sections: high-level description, removal, installation parameters, supported functions (calendar and binary sensor included), known limitations, troubleshooting, use cases, supported devices. Use the headings of a home-assistant.io integration page, so the text moves over to core unchanged.
 5. **`quality_scale.yaml`.** Add `custom_components/bilkatogo/quality_scale.yaml` with every rule from the table above, using `status: exempt` and `comment:` where needed. Hassfest only validates it for core integrations, so check it against the rule list in core's `script/hassfest/quality_scale.py` by hand.
-6. **HACS default.**
-   - Add `"country": ["DK"]` to `hacs.json`; HACS requires it for services limited to one country.   - Release (`release.py publish`) once CI is green.
+6. **HACS default.** Done: [hacs/default#13209](https://github.com/hacs/default/pull/13209) is merged.
+   - Add `"country": ["DK"]` to `hacs.json`; HACS requires it for services limited to one country.
+   - Release (`release.py publish`) once CI is green.
    - Fork `hacs/default`, add `nickknissen/bilkatogo` to `integration` in alphabetical order, and fill in the PR template from a personal account. The repo already has a description, topics, issues, an MIT license, releases and a brand icon.
 
 After these steps every rule is either `done` or `exempt` with a reason. That is the highest level the scale offers (custom integrations show as 📦 Custom, but the file documents the result).
