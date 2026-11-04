@@ -1,5 +1,8 @@
 # bilkatogo
 
+[![PyPI](https://img.shields.io/pypi/v/bilkatogo)](https://pypi.org/project/bilkatogo/)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://hacs.xyz/)
+
 Track your [BilkaToGo](https://www.bilkatogo.dk) grocery orders: an async Python library, a
 command line tool and a Home Assistant integration that follow your order from the moment it is
 placed until you pick it up, including which products Bilka substituted.
@@ -204,8 +207,10 @@ only serves Denmark.
 The integration needs Home Assistant 2026.10 or later.
 
 1. Install **BilkaToGo** from the Home Assistant Marketplace (HACS): open HACS, search for
-   **BilkaToGo** and download it, or use
-   [this link](https://my.home-assistant.io/redirect/hacs_repository/?owner=nickknissen&repository=bilkatogo&category=integration).
+   **BilkaToGo** and download it, or open it straight away:
+
+   [![Open your Home Assistant instance and open the repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=nickknissen&repository=bilkatogo&category=integration)
+
    Restart Home Assistant afterwards.
 2. Go to **Settings > Devices & services > Add integration** and pick **BilkaToGo**.
 3. Fill in the fields below. Add the integration once per account.
