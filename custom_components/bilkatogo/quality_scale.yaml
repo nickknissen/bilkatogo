@@ -18,7 +18,7 @@ rules:
   docs-removal-instructions: done
   docs-triggers:
     status: exempt
-    comment: The integration provides no triggers. Its event entities are documented in the README.
+    comment: The integration provides no triggers. Its event entities are documented in docs/home-assistant.md.
   entity-event-setup:
     status: exempt
     comment: Entities subscribe to no events; the coordinator updates them.
