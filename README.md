@@ -16,9 +16,9 @@ the same version.
 
 - [Library](#library): an async Python client for your orders, Pickup Points, product search and
   Cart.
-- [Command line](#command-line): the same from your terminal or a script.
 - [Home Assistant](#home-assistant): sensors, a calendar, actions and events for your Current
   Order.
+- [Command line](#command-line): the library from your terminal or a script.
 
 ## Library
 
@@ -48,29 +48,6 @@ asyncio.run(main())
 
 The full library documentation, covering orders, the Cart, product search, the models and the
 errors, is in [docs/library.md](https://github.com/nickknissen/bilkatogo/blob/main/docs/library.md).
-
-## Command line
-
-```sh
-pip install 'bilkatogo[cli]'
-```
-
-Or run it without installing:
-
-```sh
-uvx --from 'bilkatogo[cli]' bilkatogo --help
-```
-
-```sh
-bilkatogo login                 # log in and store the session
-bilkatogo order                 # show the Current Order with its details
-bilkatogo search skyr           # Products with Article Number, Price, stock and Offer
-bilkatogo cart add 18381        # add a Product to the Cart by Article Number
-```
-
-The full command line documentation, covering every command, credentials and capturing a
-fixture for an issue, is in
-[docs/cli.md](https://github.com/nickknissen/bilkatogo/blob/main/docs/cli.md).
 
 ## Home Assistant
 
@@ -109,6 +86,29 @@ automation:
 The full integration documentation, covering the entities, actions, events, known limitations,
 troubleshooting and removal, is in
 [docs/home-assistant.md](https://github.com/nickknissen/bilkatogo/blob/main/docs/home-assistant.md).
+
+## Command line
+
+```sh
+pip install 'bilkatogo[cli]'
+```
+
+Or run it without installing:
+
+```sh
+uvx --from 'bilkatogo[cli]' bilkatogo --help
+```
+
+```sh
+bilkatogo login                 # log in and store the session
+bilkatogo order                 # show the Current Order with its details
+bilkatogo search skyr           # Products with Article Number, Price, stock and Offer
+bilkatogo cart add 18381        # add a Product to the Cart by Article Number
+```
+
+The full command line documentation, covering every command, credentials and capturing a
+fixture for an issue, is in
+[docs/cli.md](https://github.com/nickknissen/bilkatogo/blob/main/docs/cli.md).
 
 ## Development
 
