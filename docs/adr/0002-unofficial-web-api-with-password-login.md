@@ -17,4 +17,4 @@ The password is still accepted, and it is still the only way back when Gigya ref
 The token's lifetime is not documented for this site. handle-mcp has renewed from it since 2026-11-05 (its ADR 0003). Observed here: to be recorded after day 2 and day 8 of a session started with `bilkatogo login`.
 
 - The session file now works like the password for as long as the token lives; it stays readable only by the user (0600, not on Windows) and the Home Assistant store is private.
-- Sessions saved before version 2 keep working until their JWT runs out, then need the password once.
+- Sessions saved before version 2 keep working until their JWT runs out, then need the password once: the CLI asks for `bilkatogo login` instead of prompting, the same as for any session it can no longer renew. A session saved in a newer format than the client knows is not used.

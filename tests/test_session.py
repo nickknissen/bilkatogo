@@ -360,6 +360,24 @@ async def test_an_expired_session_saved_before_login_tokens_needs_the_password(
 
 
 @pytest.mark.asyncio
+async def test_a_session_saved_in_a_newer_format_is_not_used(
+    bilka: FakeBilka, storage: MemoryTokenStorage
+) -> None:
+    await log_in(bilka, storage)
+    assert storage.data is not None
+    storage.data["version"] = 3
+
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
+    ):
+        assert len(await client.get_orders()) == 2
+
+    assert len(bilka.calls("gigya_login")) == 2
+    assert storage.data["version"] == 2
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("failure", "raised"),
     [

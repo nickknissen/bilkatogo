@@ -142,6 +142,7 @@ class BilkaToGoClient:
 
     async def _login(self) -> str:
         if self._password is None:
+            # `_jwt` is set once a session was restored, even an expired one, or started.
             if self._jwt is not None:
                 raise InvalidCredentialsError(
                     "The saved session has expired; log in again with your password"
@@ -537,6 +538,10 @@ class BilkaToGoClient:
             return None
         session = await self._token_storage.load()
         if not session or session.get("email") != self._email:
+            return None
+        version = session.get("version", 1)
+        if not isinstance(version, int) or version > SESSION_VERSION:
+            # Saved by a newer release in a format this one does not know.
             return None
         try:
             expires_at = datetime.fromisoformat(session["jwt_expires_at"])
