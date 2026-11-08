@@ -13,6 +13,7 @@ from homeassistant.helpers.selector import (
 
 from bilkatogo import (
     REQUEST_TIMEOUT_SECONDS,
+    BilkaBusyError,
     BilkaToGoClient,
     BilkaToGoError,
     BilkaUnreachableError,
@@ -90,7 +91,7 @@ class BilkaToGoConfigFlow(ConfigFlow, domain=DOMAIN):
             await client.login()
         except InvalidCredentialsError:
             return {"base": "invalid_auth"}
-        except BilkaUnreachableError:
+        except BilkaUnreachableError, BilkaBusyError:
             return {"base": "cannot_connect"}
         except BilkaToGoError:
             LOGGER.exception("Unexpected answer from Bilka while logging in")

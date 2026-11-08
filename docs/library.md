@@ -50,8 +50,18 @@ asyncio.run(main())
 - `token_storage` is any `TokenStorage` (async `load()` and `save(data)`). `FileTokenStorage`
   stores the session in a JSON file.
 - Errors derive from `BilkaToGoError`: `InvalidCredentialsError`, `BilkaUnreachableError`,
-  `UnexpectedResponseError`, `OrderNotFoundError`, `UnknownPickupPointError`,
-  `NoPickupPointError` and `CartChangeRejectedError`.
+  `BilkaBusyError`, `UnexpectedResponseError`, `OrderNotFoundError`, `UnknownPickupPointError`,
+  `NoPickupPointError` and `CartChangeRejectedError`. `BilkaBusyError` means Bilka or its
+  login service is rate limiting or failing for now (HTTP 429 or 5xx from the shop, Gigya error
+  403048 or 500000 and up): try again later; the credentials are not at fault.
+- `search(text, pickup_point=None, limit=20, ...)` finds Products at the Store of a Pickup
+  Point, by default the Store that serves the Cart. When no Product has every word, Bilka's
+  index drops words until something matches, as the website does. `get_products([article_number,
+  ...], pickup_point=None)` looks Products up by Article Number at that Store, in the order
+  asked, leaving out those the Store does not sell; it finds Products kept out of search too,
+  and takes at most 1000 at once. Anything but digits raises `ValueError`. Each `Product` has its `ean`, `size` (e.g. "1 kg") and
+  `category` (Bilka's category path and product type, e.g. "Frugt & grønt > Frugt > Bananer"),
+  each `None` when Bilka has none. Bilka's placeholder Offer label "Se Her" reads "Tilbud".
 - `Order.status` is an `OrderStatus` (Processing, Received, Packed, Picked Up, Not Collected,
   Cancelled, Sold Out, Unknown), using the same words as the website. The raw Bilka status code
   is kept in `status_code`. The mapping is listed in [GLOSSARY.md](../GLOSSARY.md).

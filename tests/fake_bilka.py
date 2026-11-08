@@ -256,13 +256,21 @@ class FakeBilka:
         query = algolia_query(request)
         if query["indexName"] != ALGOLIA_INDEX:
             return httpx.Response(404, json={"message": "Index does not exist"})
-        filters = dict(
-            term.split(":", 1) for term in query.get("filters", "").split(" AND ") if term
-        )
-        if filters.get("nonsearchable") != "false" or "isInAssortmentIn" not in filters:
+        filters: dict[str, str] = {}
+        object_ids: set[str] | None = None
+        for term in query.get("filters", "").split(" AND "):
+            if term.startswith("(") and term.endswith(")"):
+                alternatives = [part.split(":", 1) for part in term[1:-1].split(" OR ")]
+                if any(name != "objectID" for name, _ in alternatives):
+                    return httpx.Response(400, json={"message": f"fake: unexpected group {term}"})
+                object_ids = {value for _, value in alternatives}
+            elif term:
+                name, value = term.split(":", 1)
+                filters[name] = value
+        if "isInAssortmentIn" not in filters or filters.get("nonsearchable", "false") != "false":
             return httpx.Response(400, json={"message": "fake: unexpected filters"})
         store = int(filters.pop("isInAssortmentIn"))
-        filters.pop("nonsearchable")
+        searchable_only = filters.pop("nonsearchable", None) is not None
         known = {"inStockStore": str(store), "isInOffer": str(store), "isInCurrentLeaflet": "true"}
         if any(known.get(name) != value for name, value in filters.items()):
             return httpx.Response(400, json={"message": f"fake: unexpected filters {filters}"})
@@ -272,6 +280,8 @@ class FakeBilka:
             hit
             for hit in self.products
             if store in hit["isInAssortmentIn"]
+            and (object_ids is None or str(hit["objectID"]) in object_ids)
+            and not (searchable_only and hit.get("nonsearchable"))
             and all(store in hit[name] for name in per_store & filters.keys())
             and (hit["isInCurrentLeaflet"] or "isInCurrentLeaflet" not in filters)
             and all(word in f"{hit['name']} {hit['brand']}".casefold() for word in words)

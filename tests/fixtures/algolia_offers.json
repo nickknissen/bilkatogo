@@ -1,0 +1,35 @@
+{
+  "hits": [
+    {
+      "storeData": {
+        "1653": {
+          "inStock": true,
+          "multipromo": "",
+          "offerDescription": "Se Her",
+          "offerFrom": "",
+          "offerUntil": "",
+          "offerMax": 0,
+          "offerMaxDescription": "",
+          "offerCount": 0,
+          "price": 2500,
+          "beforePrice": 0,
+          "multiPromoPrice": "",
+          "unitsOfMeasurePrice": 12896,
+          "unitsOfMeasurePriceUnit": "Kg.",
+          "unitsOfMeasureOfferPrice": 10417,
+          "unitsOfMeasureShowPrice": 10417
+        }
+      },
+      "price": 3095,
+      "isInCurrentLeaflet": false,
+      "gtin": "5711953084676",
+      "name": "Danbo ost i skiver mellemlagret 45+",
+      "brand": "Arla Klovborg",
+      "netcontent": "240 g",
+      "multipromos": [],
+      "productType": "Danbo ost i skiver",
+      "cpOffer": false,
+      "objectID": "61096"
+    }
+  ]
+}

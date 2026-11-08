@@ -16,7 +16,7 @@ from bilkatogo import (
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
-from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, algolia_query
+from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, algolia_query, load_fixture
 
 
 @pytest.mark.asyncio
@@ -32,6 +32,8 @@ async def test_search_finds_products_at_the_carts_store(bilka: FakeBilka) -> Non
     assert query["indexName"] == "prod_BILKATOGO_PRODUCTS"
     assert query["query"] == "skyr"
     assert query["filters"] == "isInAssortmentIn:1653 AND nonsearchable:false"
+    # Like the website, fall back to fewer words rather than find nothing.
+    assert query["removeWordsIfNoResults"] == "allOptional"
     assert "article" not in json.loads(query["attributesToRetrieve"])
 
     assert [product.article_number for product in products] == ["19753", "128298"]
@@ -42,6 +44,11 @@ async def test_search_finds_products_at_the_carts_store(bilka: FakeBilka) -> Non
     assert plain.price == Decimal("30.95")
     assert plain.unit_price == Decimal("30.95")
     assert plain.unit == "kg"
+    assert plain.ean == "5711953011399"
+    assert plain.size == "1 kg"
+    assert plain.category == (
+        "Mejeri & køl > Mejeri > Yoghurt & syrnede mælkeprodukter > Skyr > Skyr m. smag"
+    )
     assert plain.in_stock is True
     assert plain.offer is None
     assert plain.multibuy_offer is None
@@ -96,6 +103,64 @@ async def test_multibuy_offer_is_bilkas_text_and_not_an_offer(bilka: FakeBilka) 
     assert product.unit == "stk"
     assert product.offer is None
     assert product.multibuy_offer == "Mix 10 for 25,00"
+
+
+@pytest.mark.asyncio
+async def test_se_her_placeholder_offer_is_labelled_tilbud(bilka: FakeBilka) -> None:
+    [danbo] = load_fixture("algolia_offers.json")["hits"]
+    bilka.products.append(
+        {**danbo, "isInAssortmentIn": [1653], "isInOffer": [1653], "inStockStore": [1653]}
+    )
+
+    [product] = await search(bilka, "danbo")
+
+    assert product.offer == Offer(
+        label="Tilbud",
+        price=Decimal("25.00"),
+        unit_price=Decimal("104.17"),
+        ends=None,
+        limit_per_customer=None,
+    )
+    assert product.price == Decimal("30.95")
+
+
+@pytest.mark.asyncio
+async def test_empty_ean_and_size_are_none(bilka: FakeBilka) -> None:
+    bilka.products[0].update(gtin="", units=0, unitsOfMeasure="")
+
+    [product, _] = await search(bilka, "skyr")
+
+    assert product.ean is None
+    assert product.size is None
+
+
+@pytest.mark.asyncio
+async def test_size_is_written_as_the_website_does(bilka: FakeBilka) -> None:
+    bilka.products[0].update(units=1.5, unitsOfMeasure="l")
+
+    [product, _] = await search(bilka, "skyr")
+
+    assert product.size == "1,5 l"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "product_type", "category"),
+    [
+        ("Frugt & grønt > Frugt > Bananer", "", "Frugt & grønt > Frugt > Bananer"),
+        ("Frugt & grønt > Frugt > Bananer", "Bananer", "Frugt & grønt > Frugt > Bananer"),
+        ("", "Skyr m. smag", "Skyr m. smag"),
+        (None, None, None),
+    ],
+)
+async def test_category_is_the_category_path_and_product_type_either_alone_or_none(
+    bilka: FakeBilka, path: str | None, product_type: str | None, category: str | None
+) -> None:
+    bilka.products[0].update(deepestCategoryPath=path, productType=product_type)
+
+    [product, _] = await search(bilka, "skyr")
+
+    assert product.category == category
 
 
 @pytest.mark.asyncio

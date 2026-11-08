@@ -377,7 +377,7 @@ PickupPointOption = Annotated[
     str | None,
     typer.Option(
         "--pickup-point",
-        help="Search at this Pickup Point's Store. Defaults to the Pickup Point in your Cart.",
+        help="Use this Pickup Point's Store. Defaults to the Store that serves your Cart.",
     ),
 ]
 SearchLimitOption = Annotated[
@@ -433,13 +433,40 @@ async def search(
         ),
         "products",
     )
+    print_products(found, as_json)
+
+
+@app.command()
+@run_async
+async def products(
+    ctx: typer.Context,
+    article_numbers: Annotated[
+        list[str], typer.Argument(metavar="ARTICLE...", help="Article Numbers, e.g. 18381 19753.")
+    ],
+    pickup_point: PickupPointOption = None,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Show Products by Article Number with their Price, stock and Offer at a Store."""
+    found = await with_session(
+        ctx,
+        email,
+        password,
+        lambda client: client.get_products(article_numbers, pickup_point=pickup_point),
+        "products",
+    )
+    print_products(found, as_json)
+
+
+def print_products(found: list[Product], as_json: bool) -> None:
     if as_json:
         typer.echo(to_json(found))
     elif not found:
         typer.echo("No products.")
     else:
         print_table(
-            ["Article", "Product", "Brand", "Price", "Unit Price", "Stock", "Offer"],
+            ["Article", "Product", "Size", "Brand", "Price", "Unit Price", "Stock", "Offer"],
             [product_row(product) for product in found],
         )
 
@@ -449,6 +476,7 @@ def product_row(product: Product) -> list[str]:
     return [
         product.article_number,
         product.name,
+        product.size or "",
         product.brand,
         format_amount(product.price),
         unit_price,

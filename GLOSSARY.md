@@ -123,10 +123,6 @@ The product the customer ordered on a Substituted Order Line.
 The product Bilka packed instead of the Original Product, e.g. Kiwi instead of Blommer. When it is dearer, Bilka charges the Original Product's price for it: its line total (Bilka's `amount`) can be lower than its Price.
 _Avoid_: Erstatningsvare in code
 
-**Size**:
-How much one unit of a Product holds, e.g. 750 g or 1,5 l. Bilka's `product.units` and `product.unitsOfMeasure`. A Replacement Product often has the Original Product's name and differs only in Size, e.g. Klementiner 750 g replaced by Klementiner 900 g.
-_Avoid_: Weight, volume, pack size
-
 **Missing Item**:
 An Order Line Bilka packed fewer of than ordered without a Replacement Product, e.g. 2 of 4 skyr. It carries the missing quantity. Distinct from a Substitution. An Order where nothing at all could be packed has the Order Status Sold Out.
 _Avoid_: Udsolgt vare, OOS line, shortage
@@ -141,12 +137,24 @@ _Avoid_: Item, vare (use only as the Danish alias)
 Bilka's identifier for a Product, e.g. `19753`: what Order Lines and Cart Lines refer to and what the Cart is changed by. Bilka calls it `objectID` (and `productId` when changing the Cart). Algolia's separate `article` field is not the Article Number.
 _Avoid_: SKU, product ID, objectID, EAN (a barcode is something else)
 
+**EAN**:
+The barcode number printed on a Product, e.g. `5711953011399`. Algolia's `gtin`. Not the Article Number.
+_Avoid_: GTIN, barcode, stregkode
+
+**Size**:
+How much one unit of a Product holds, e.g. 750 g or 1,5 l. Bilka's `units` and `unitsOfMeasure`, on an Order Line's `product` and on an Algolia hit. A Replacement Product often has the Original Product's name and differs only in Size, e.g. Klementiner 750 g replaced by Klementiner 900 g.
+_Avoid_: Weight, volume, pack size, netcontent
+
+**Category**:
+Where a Product sits in Bilka's assortment, most general first, e.g. "Mejeri & køl > Mejeri > Ost > Revet ost & topping > Revet mozzarella". Algolia's `deepestCategoryPath` with its `productType` after it, unless the path already ends with it.
+_Avoid_: Department, hierarchy, product type (on its own)
+
 **Price**:
 What one unit of a Product normally costs at a Store. On a Cart Line it is Bilka's `product.price`; the line's `unitprice` already has the Offer or Multibuy Offer applied.
 _Avoid_: List price, normal price
 
 **Offer**:
-A temporary lower Price for a Product at a Store, with Bilka's label (e.g. "Skarp pris"), an end date and optionally a limit per customer, shown on the website as "tilbud".
+A temporary lower Price for a Product at a Store, with Bilka's label (e.g. "Skarp pris"), an end date and optionally a limit per customer, shown on the website as "tilbud". The label is Algolia's `storeData.<sid>.offerDescription`; "Se Her", Bilka's placeholder for a leaflet Offer without a text of its own, reads "Tilbud".
 _Avoid_: Promo, sale, campaign
 
 **Offer Price**:

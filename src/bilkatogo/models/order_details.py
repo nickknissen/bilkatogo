@@ -7,6 +7,7 @@ from typing import Any
 from .base import BilkaDataClass
 from .money import discount, kroner
 from .order import OrderStatus, PickupPoint, PickupSlot
+from .product import size_of
 
 
 @dataclass
@@ -227,16 +228,7 @@ def _article_number(data: dict[str, Any]) -> str:
 
 
 def _size(data: dict[str, Any]) -> str:
-    """The Product's size as the website shows it, e.g. "750 g" or "1,5 l"."""
-    product = data.get("product") or {}
-    unit = product.get("unitsOfMeasure") or ""
-    try:
-        units = Decimal(str(product.get("units") or 0))
-    except ArithmeticError:
-        return ""
-    if not unit or not units.is_finite() or units <= 0:
-        return ""
-    return f"{units.normalize():f}".replace(".", ",") + f" {unit}"
+    return size_of(data.get("product") or {}) or ""
 
 
 def _quantity(value: Any) -> int:

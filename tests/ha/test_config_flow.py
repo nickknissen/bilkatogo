@@ -1,4 +1,5 @@
 import httpx
+import pytest
 from homeassistant.config_entries import SOURCE_USER, ConfigFlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
@@ -48,6 +49,25 @@ async def test_bilka_unreachable_shows_cannot_connect(
     hass: HomeAssistant, bilka: FakeBilka
 ) -> None:
     bilka.script("gigya_login", httpx.ConnectError("down"))
+
+    result = await start_flow(hass)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        httpx.Response(403, json={"errorCode": 403048, "errorMessage": "Too many requests"}),
+        httpx.Response(500, json={"errorCode": 500001, "errorMessage": "General Server Error"}),
+    ],
+    ids=["rate_limit", "server_error"],
+)
+async def test_busy_login_service_shows_cannot_connect(
+    hass: HomeAssistant, bilka: FakeBilka, answer: httpx.Response
+) -> None:
+    bilka.script("gigya_login", answer)
 
     result = await start_flow(hass)
 

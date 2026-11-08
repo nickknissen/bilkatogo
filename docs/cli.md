@@ -20,10 +20,11 @@ bilkatogo orders --limit 10     # list your most recent orders
 bilkatogo order                 # show the Current Order with its details
 bilkatogo order 900000000001    # show one order by Order Number
 bilkatogo pickup-points         # list Pickup Points and their Store, * marks your Cart's
-bilkatogo search skyr           # Products with Article Number, Price, stock and Offer at your Cart's Store
+bilkatogo search skyr           # Products with Article Number, Size, Price, stock and Offer at your Cart's Store
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
 bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
 bilkatogo search kaffe --on-offer --in-leaflet  # Offers and Multibuy Offers in this week's Leaflet
+bilkatogo products 18381 19753  # the same, for these Article Numbers (--pickup-point, --json)
 bilkatogo cart                  # your Cart Lines, the Cart total, Pickup Point or Home Delivery, Pickup Slot, fees and Minimum Order
 bilkatogo cart add 18381 --quantity 2   # add 2 of a Product by Article Number
 bilkatogo cart add-items 18381:10 19753 140787:2   # add several; 19753 gets --quantity (1)
