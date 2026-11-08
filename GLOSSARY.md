@@ -152,7 +152,7 @@ One article in the BilkaToGo assortment, identified by its Article Number. An Or
 _Avoid_: Item, vare (use only as the Danish alias)
 
 **Article Number**:
-Bilka's identifier for a Product, e.g. `19753`: what Order Lines and Cart Lines refer to and what the Cart is changed by. Bilka calls it `objectID` (and `productId` when changing the Cart). Algolia's separate `article` field is not the Article Number.
+Bilka's identifier for a Product, e.g. `19753`: what Order Lines and Cart Lines refer to and what the Cart is changed by. Bilka calls it `objectID` (and `productId` when changing the Cart, and `curatedSkuList` for the Recipe Products on a Recipe's page). Algolia's separate `article` field is not the Article Number.
 _Avoid_: SKU, product ID, objectID, EAN (a barcode is something else)
 
 **EAN**:

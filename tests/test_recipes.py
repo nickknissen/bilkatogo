@@ -72,6 +72,18 @@ async def test_a_category_of_sub_categories_collects_their_recipes(
 
 
 @pytest.mark.asyncio
+async def test_a_sub_category_whose_page_is_gone_is_skipped(
+    reader: RecipeReader, bilka: FakeBilka
+) -> None:
+    bilka.missing_recipe_pages.add("aftensmad/fiskeretter")
+
+    found = await reader.category("aftensmad", limit=100)
+
+    assert found
+    assert not [recipe for recipe in found if recipe.id.startswith("aftensmad/fiskeretter/")]
+
+
+@pytest.mark.asyncio
 async def test_at_most_five_pages_are_read_at_once(reader: RecipeReader, bilka: FakeBilka) -> None:
     await reader.category("aftensmad")
 
@@ -218,6 +230,16 @@ def test_anything_but_a_recipe_path_is_an_unknown_recipe(given: str) -> None:
 async def test_an_unknown_recipe_names_the_categories(reader: RecipeReader) -> None:
     with pytest.raises(UnknownRecipeError, match="'frokost/findes-ikke'.*aftensmad, frokost"):
         await reader.recipe("frokost/findes-ikke")
+
+
+@pytest.mark.asyncio
+async def test_a_recipe_or_category_that_is_not_a_path_names_the_categories(
+    reader: RecipeReader,
+) -> None:
+    with pytest.raises(UnknownRecipeError, match="'karbo nader'.*aftensmad, frokost"):
+        await reader.recipe("karbo nader")
+    with pytest.raises(UnknownCategoryError, match="'../etc'.*aftensmad, frokost"):
+        await reader.category("../etc")
 
 
 @pytest.mark.asyncio

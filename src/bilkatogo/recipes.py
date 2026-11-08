@@ -148,7 +148,7 @@ class RecipeReader:
 
     async def madplan(self) -> list[Recipe]:
         """This week's Madplan: seven dinners, Monday to Sunday, in the website's order."""
-        recipes = [_recipe(*card) for card in _cards(await self._page(MADPLAN))]
+        recipes = _cards(await self._page(MADPLAN))
         if not recipes:
             raise WebsiteChangedError("the Madplan shows no recipes")
         return recipes
@@ -156,27 +156,25 @@ class RecipeReader:
     async def category(self, category: str, *, limit: int = 20) -> list[Recipe]:
         """The Recipes in a category, e.g. "aftensmad" or "aftensmad/danske-retter". A
         category with sub-categories gives theirs, one from each in turn."""
-        path = category_path(category)
         try:
-            groups = await self._collect(path, CATEGORY_DEPTH, {})
-        except _NoPage:
+            path = category_path(category)
+            pages_read: dict[str, dict[str, Any] | None] = {path: await self._page(path)}
+        except UnknownCategoryError, _NoPage:
             raise UnknownCategoryError(category, await self.categories()) from None
+        groups = await self._collect(path, CATEGORY_DEPTH, pages_read)
         mixed = [recipe for row in zip_longest(*groups) for recipe in row if recipe]
         return mixed[:limit]
 
     async def recipe(self, recipe: str) -> RecipeDetails:
         """One Recipe's page, without its Products' Prices (see `BilkaToGoClient.get_recipe`)."""
-        path = recipe_path(recipe)
         try:
+            path = recipe_path(recipe)
             page = await self._page(path)
-        except _NoPage:
+        except UnknownRecipeError, _NoPage:
             raise UnknownRecipeError(recipe, await self.categories()) from None
         sections = _sections(page)
         ingredients = [
-            line
-            for heading, lines in sections
-            if heading.startswith(INGREDIENTS_HEADING)
-            for line in lines
+            line for heading, lines in sections if _is_ingredients(heading) for line in lines
         ]
         article_numbers = _article_numbers(page)
         if not ingredients and not article_numbers:  # a category page, not a Recipe
@@ -197,27 +195,39 @@ class RecipeReader:
 
     async def categories(self) -> list[str]:
         """The top-level categories, e.g. "aftensmad" and "frokost"."""
-        paths = (path for path, _, _ in _cards(await self._page("")))
+        paths = (card.id for card in _cards(await self._page("")))
         return list(dict.fromkeys(path for path in paths if "/" not in path))
 
     async def _collect(
-        self, path: str, depth: int, read: dict[str, dict[str, Any]]
+        self, path: str, depth: int, pages_read: dict[str, dict[str, Any] | None]
     ) -> list[list[Recipe]]:
         """The Recipes below `path`, per group. The first card's page tells whether the cards
-        are Recipes or sub-categories."""
-        page = read.get(path) or await self._page(path)
-        cards = _cards(page)
+        are Recipes or sub-categories; pages are kept in `pages_read` to be read only once."""
+        page = await self._page_if_there(path, pages_read)
+        cards = _cards(page) if page is not None else []
         if not cards:
             return []
-        first = cards[0][0]
-        read[first] = await self._page(first)
-        if depth == 0 or _is_recipe(read[first]):
+        first_card = await self._page_if_there(cards[0].id, pages_read) if depth else None
+        if first_card is None or _is_recipe(first_card):
             groups: dict[str | None, list[Recipe]] = {}
             for card in cards:
-                groups.setdefault(card[2], []).append(_recipe(*card))
+                groups.setdefault(card.group, []).append(card)
             return list(groups.values())
-        found = await asyncio.gather(*(self._collect(card[0], depth - 1, read) for card in cards))
-        return [group for groups in found for group in groups]
+        per_sub_category = await asyncio.gather(
+            *(self._collect(card.id, depth - 1, pages_read) for card in cards)
+        )
+        return [group for groups in per_sub_category for group in groups]
+
+    async def _page_if_there(
+        self, path: str, pages_read: dict[str, dict[str, Any] | None]
+    ) -> dict[str, Any] | None:
+        """A page, or None when the website no longer has it: a card can outlive its page."""
+        if path not in pages_read:
+            try:
+                pages_read[path] = await self._page(path)
+            except _NoPage:
+                pages_read[path] = None
+        return pages_read[path]
 
     async def _page(self, path: str) -> dict[str, Any]:
         """A page's data. The website answers its HTML, naming the current build, both for a
@@ -277,8 +287,7 @@ def _nodes(node: Any, *kinds: str) -> list[dict[str, Any]]:
     """Every Magnolia component of these kinds, in page order."""
     found = []
     if isinstance(node, dict):
-        kind = str(node.get("componentType") or "").removeprefix("MagnoliaComponents")
-        if kind in kinds:
+        if _kind(node) in kinds:
             found.append(node)
         for value in node.values():
             found += _nodes(value, *kinds)
@@ -292,10 +301,11 @@ def _kind(node: dict[str, Any]) -> str:
     return str(node.get("componentType") or "").removeprefix("MagnoliaComponents")
 
 
-def _cards(page: dict[str, Any]) -> list[tuple[str, str, str | None]]:
-    """The pages a page shows as cards, as (path, name, group), in page order: the grids of its
-    own or a sub-category's pages, and carousels under a heading. A Recipe's "Lignende
-    opskrifter" is its parent's grid, so it is left out."""
+def _cards(page: dict[str, Any]) -> list[Recipe]:
+    """The pages a page shows as cards, in page order: the grids of its own or a
+    sub-category's pages, and carousels under a heading. A card is a Recipe or a category
+    (see `_collect`). A Recipe's "Lignende opskrifter" is its parent's grid, so it is left
+    out."""
     own = str(page.get("path") or "").removeprefix("/bilka-to-go").rstrip("/") + "/"
     group: str | None = None
     found: dict[str, tuple[str, str | None]] = {}
@@ -314,7 +324,7 @@ def _cards(page: dict[str, Any]) -> list[tuple[str, str, str | None]]:
                 name = str(card.get("header") or _name(target)).strip()
                 found.setdefault(str(target.get("path") or ""), (name, group))
     return [
-        (path.removeprefix(ROOT).strip("/"), name, card_group)
+        _recipe(path.removeprefix(ROOT).strip("/"), name, card_group)
         for path, (name, card_group) in found.items()
         if path.startswith(ROOT) and path != ROOT
     ]
@@ -337,7 +347,12 @@ def _recipe(path: str, name: str, group: str | None) -> Recipe:
 
 
 def _is_recipe(page: dict[str, Any]) -> bool:
-    return any(heading.startswith(INGREDIENTS_HEADING) for heading, _ in _sections(page))
+    return any(_is_ingredients(heading) for heading, _ in _sections(page))
+
+
+def _is_ingredients(heading: str) -> bool:
+    """ "Ingredienser", or "Ingredienser til ..." for one part of a Recipe."""
+    return heading.startswith(INGREDIENTS_HEADING)
 
 
 def _text(fragment: str) -> str:
@@ -380,7 +395,7 @@ def _lines(fragment: str) -> list[str]:
 def _method(sections: list[tuple[str, list[str]]]) -> list[RecipeSection]:
     """The sections after the first ingredients, other than more ingredients."""
     start = next(
-        (i for i, (heading, _) in enumerate(sections) if heading.startswith(INGREDIENTS_HEADING)),
+        (i for i, (heading, _) in enumerate(sections) if _is_ingredients(heading)),
         None,
     )
     if start is None:
@@ -388,7 +403,7 @@ def _method(sections: list[tuple[str, list[str]]]) -> list[RecipeSection]:
     return [
         RecipeSection(title=heading or None, steps=lines)
         for heading, lines in sections[start + 1 :]
-        if lines and not heading.startswith(INGREDIENTS_HEADING)
+        if lines and not _is_ingredients(heading)
     ]
 
 

@@ -7,7 +7,7 @@ Bilka enforces its own rules on a Cart change (stock, assortment, Offer limit pe
 ## Consequences
 
 - Anything past the Cart, including choosing the Pickup Point, needs a new decision that supersedes this one.
-- The CLI changes the Cart without a confirmation prompt, but offers no command to empty it, so one mistyped command cannot throw away a Cart the customer built up.
+- The CLI changes the Cart without a confirmation prompt, but offers no command to empty it, so one mistyped command cannot throw away a Cart the customer built up. The exception is `recipes add` (ADR 0007), which asks first because it adds a whole Recipe's Products at once.
 - Every write is checked by hand once against the maintainer's own Cart before a release; CI only exercises the fake backend.
 - A Cart change can be undone by Bilka, not the client: logging in on the website or in the app replaces the Cart with the one stored under that browser's `cart` cookie (see `docs/agents/capturing.md`, How Bilka's Cart and login behave). The client never calls `auth/LoginJWT` (the shop accepts Gigya's JWT on its own, checked live on 2026-11-02), so its own logins never undo a change, and documents the rest.
 

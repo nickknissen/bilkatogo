@@ -467,7 +467,7 @@ class BilkaToGoClient:
     async def get_recipe(self, recipe: str) -> RecipeDetails:
         """A Recipe from bilkatogo.dk with its Recipe Products at the Store that serves the
         Cart, in page order; Products the Store does not sell are left out. To add them, pass
-        `{number: 1 for number in recipe.article_numbers}` to `add_items_to_cart`."""
+        `{product.article_number: 1 for product in recipe.products}` to `add_items_to_cart`."""
         # The recipes module stays apart: a change to the website breaks only recipes (ADR 0007).
         from .recipes import RecipeReader
 

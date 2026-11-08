@@ -125,6 +125,7 @@ class FakeBilka:
         self.max_quantity: int | None = None
         self.build = RECIPES_BUILD
         self.recipe_pages: dict[str, str] = dict(RECIPE_PAGES)
+        self.missing_recipe_pages: set[str] = set()
         self.pages_in_flight = 0
         self.most_pages_in_flight = 0
         self._scripts: dict[str, deque[Scripted]] = defaultdict(deque)
@@ -309,6 +310,8 @@ class FakeBilka:
         """The fixture for a recipe page. The categories below aftensmad that were not
         captured answer with a captured one: a sub-category with Danish dishes, a recipe with
         karbonader."""
+        if page in self.missing_recipe_pages:
+            return None
         if page in self.recipe_pages:
             return self.recipe_pages[page]
         if page.startswith("aftensmad/"):
