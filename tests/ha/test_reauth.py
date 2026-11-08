@@ -57,6 +57,44 @@ async def change_password_at_bilka(bilka: FakeBilka) -> None:
     bilka.script("order_history", httpx.Response(401, json={"code": 401, "msg": "Unauthorized"}))
 
 
+async def test_an_expired_session_renews_from_the_login_token_without_logging_in(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    bilka: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    entry = await setup_integration()
+
+    freezer.tick(timedelta(hours=25))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert order_status(hass, entry) == "received"
+    assert len(bilka.calls("gigya_login")) == 1
+    assert len(bilka.calls("gigya_jwt")) == 2
+
+
+async def test_a_refused_login_token_falls_back_to_the_stored_password_without_reauth(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    bilka: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    entry = await setup_integration()
+    bilka.script(
+        "gigya_jwt",
+        httpx.Response(403, json={"errorCode": 403005, "errorMessage": "Unauthorized user"}),
+    )
+
+    freezer.tick(timedelta(hours=25))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert order_status(hass, entry) == "received"
+    assert len(bilka.calls("gigya_login")) == 2
+    assert reauth_flows(hass, entry) == []
+
+
 async def test_changed_password_starts_reauth(
     hass: HomeAssistant,
     setup_integration: SetupIntegration,

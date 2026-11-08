@@ -9,6 +9,8 @@ GIGYA_RATE_LIMIT = 403048
 GIGYA_SERVER_ERRORS = 500000
 JWT_LIFETIME_SECONDS = 86400
 JWT_RENEWAL_MARGIN = timedelta(minutes=5)
+# The saved session's format; version 2 adds Gigya's login token (ADR 0002).
+SESSION_VERSION = 2
 
 API_HOST = "api.bilkatogo.dk"
 API_BASE_URL = f"https://{API_HOST}/api"

@@ -9,10 +9,11 @@ from bilkatogo import (
     BilkaBusyError,
     BilkaToGoClient,
     BilkaUnreachableError,
+    InvalidCredentialsError,
     UnexpectedResponseError,
 )
 from tests.conftest import MemoryTokenStorage
-from tests.fake_bilka import EMAIL, LOGGED_OUT, PASSWORD, FakeBilka, load_fixture
+from tests.fake_bilka import EMAIL, LOGGED_OUT, PASSWORD, FakeBilka, form, load_fixture
 
 UNAUTHORIZED = httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
 
@@ -219,7 +220,7 @@ async def test_a_login_stores_a_session_that_expires_24_hours_later(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("logged_in_at", LOGGED_IN_AT, ids=LOGGED_IN_IDS)
 @pytest.mark.parametrize(
-    ("used_after", "logs_in_again"),
+    ("used_after", "renews"),
     [
         (JWT_LIFETIME - timedelta(minutes=5, seconds=1), False),
         (JWT_LIFETIME - timedelta(minutes=5), True),
@@ -233,7 +234,7 @@ async def test_a_stored_session_is_renewed_5_minutes_before_it_expires(
     freezer: FrozenDateTimeFactory,
     logged_in_at: datetime,
     used_after: timedelta,
-    logs_in_again: bool,
+    renews: bool,
 ) -> None:
     freezer.move_to(logged_in_at)
     await log_in(bilka, storage)
@@ -246,10 +247,157 @@ async def test_a_stored_session_is_renewed_5_minutes_before_it_expires(
     ):
         await client.get_orders()
 
-    assert len(bilka.calls("gigya_login")) == (2 if logs_in_again else 1)
+    # Renewed from the saved login token, without logging in again.
+    assert len(bilka.calls("gigya_jwt")) == (2 if renews else 1)
+    assert len(bilka.calls("gigya_login")) == 1
     assert len(bilka.calls("order_history")) == 1
-    renewed_at = used_at if logs_in_again else logged_in_at
+    renewed_at = used_at if renews else logged_in_at
     assert stored_expiry(storage) == renewed_at + JWT_LIFETIME
+
+
+LOGIN_TOKEN = load_fixture("gigya_login.json")["sessionInfo"]["cookieValue"]
+REFUSED_TOKEN = httpx.Response(
+    403, json={"statusCode": 403, "errorCode": 403005, "errorMessage": "Unauthorized user"}
+)
+
+
+async def expired_session(
+    bilka: FakeBilka, storage: MemoryTokenStorage, freezer: FrozenDateTimeFactory
+) -> datetime:
+    """Log in, then move past the JWT's lifetime; returns the time it is used at."""
+    freezer.move_to(LOGGED_IN_AT[0])
+    await log_in(bilka, storage)
+    used_at = LOGGED_IN_AT[0] + JWT_LIFETIME + timedelta(hours=1)
+    freezer.move_to(used_at)
+    return used_at
+
+
+async def orders_without_password(bilka: FakeBilka, storage: MemoryTokenStorage) -> int:
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, token_storage=storage, httpx_client=http) as client,
+    ):
+        return len(await client.get_orders())
+
+
+@pytest.mark.asyncio
+async def test_a_login_saves_the_login_token_with_the_jwt(
+    bilka: FakeBilka, storage: MemoryTokenStorage
+) -> None:
+    await log_in(bilka, storage)
+
+    assert storage.data is not None
+    assert storage.data["version"] == 2
+    assert storage.data["login_token"] == LOGIN_TOKEN
+
+
+@pytest.mark.asyncio
+async def test_an_expired_jwt_is_renewed_from_the_login_token_without_the_password(
+    bilka: FakeBilka, storage: MemoryTokenStorage, freezer: FrozenDateTimeFactory
+) -> None:
+    used_at = await expired_session(bilka, storage, freezer)
+
+    assert await orders_without_password(bilka, storage) == 2
+
+    [renewal] = bilka.calls("gigya_jwt")[1:]
+    assert form(renewal)["login_token"] == LOGIN_TOKEN
+    assert len(bilka.calls("gigya_login")) == 1
+    assert stored_expiry(storage) == used_at + JWT_LIFETIME
+    assert storage.data is not None
+    assert storage.data["login_token"] == LOGIN_TOKEN
+
+
+@pytest.mark.asyncio
+async def test_a_refused_login_token_falls_back_to_the_password(
+    bilka: FakeBilka, storage: MemoryTokenStorage, freezer: FrozenDateTimeFactory
+) -> None:
+    used_at = await expired_session(bilka, storage, freezer)
+    bilka.script("gigya_jwt", REFUSED_TOKEN)
+
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, token_storage=storage, httpx_client=http) as client,
+    ):
+        assert len(await client.get_orders()) == 2
+
+    assert len(bilka.calls("gigya_login")) == 2
+    assert stored_expiry(storage) == used_at + JWT_LIFETIME
+    assert storage.data is not None
+    assert storage.data["login_token"] == LOGIN_TOKEN
+
+
+@pytest.mark.asyncio
+async def test_a_refused_login_token_without_a_password_asks_to_log_in_again(
+    bilka: FakeBilka, storage: MemoryTokenStorage, freezer: FrozenDateTimeFactory
+) -> None:
+    await expired_session(bilka, storage, freezer)
+    bilka.script("gigya_jwt", REFUSED_TOKEN)
+
+    with pytest.raises(
+        InvalidCredentialsError,
+        match="The saved session has expired; log in again with your password",
+    ):
+        await orders_without_password(bilka, storage)
+
+    assert storage.data is not None
+    assert "login_token" not in storage.data
+    assert bilka.calls("order_history") == []
+    assert len(bilka.calls("gigya_login")) == 1
+
+
+@pytest.mark.asyncio
+async def test_an_expired_session_saved_before_login_tokens_needs_the_password(
+    bilka: FakeBilka, storage: MemoryTokenStorage, freezer: FrozenDateTimeFactory
+) -> None:
+    await expired_session(bilka, storage, freezer)
+    assert storage.data is not None
+    del storage.data["version"], storage.data["login_token"]
+
+    with pytest.raises(InvalidCredentialsError, match="The saved session has expired"):
+        await orders_without_password(bilka, storage)
+
+    assert len(bilka.calls("gigya_jwt")) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "raised"),
+    [
+        (httpx.ConnectError("fake: down"), BilkaUnreachableError),
+        (httpx.Response(500, json={"errorCode": 500001, "errorMessage": "fake"}), BilkaBusyError),
+    ],
+    ids=["unreachable", "busy"],
+)
+async def test_gigya_failing_to_renew_keeps_the_login_token(
+    bilka: FakeBilka,
+    storage: MemoryTokenStorage,
+    freezer: FrozenDateTimeFactory,
+    failure: httpx.Response | Exception,
+    raised: type[Exception],
+) -> None:
+    await expired_session(bilka, storage, freezer)
+    bilka.script("gigya_jwt", failure)
+
+    with pytest.raises(raised):
+        await orders_without_password(bilka, storage)
+
+    assert len(bilka.calls("gigya_login")) == 1
+    assert storage.data is not None
+    assert storage.data["login_token"] == LOGIN_TOKEN
+    assert await orders_without_password(bilka, storage) == 2
+
+
+@pytest.mark.asyncio
+async def test_a_jwt_the_shop_refuses_needs_the_password_even_with_a_login_token(
+    bilka: FakeBilka, storage: MemoryTokenStorage
+) -> None:
+    await log_in(bilka, storage)
+    bilka.script("order_history", UNAUTHORIZED)
+
+    with pytest.raises(InvalidCredentialsError, match="The saved session has expired"):
+        await orders_without_password(bilka, storage)
+
+    assert len(bilka.calls("gigya_jwt")) == 1
 
 
 @pytest.mark.asyncio

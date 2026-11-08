@@ -48,7 +48,13 @@ asyncio.run(main())
   `get_current_order()`. `Order.finished` tells whether nothing more will happen to an Order
   (Picked Up, Not Collected, Cancelled or Sold Out).
 - `token_storage` is any `TokenStorage` (async `load()` and `save(data)`). `FileTokenStorage`
-  stores the session in a JSON file.
+  stores the session in a JSON file. The session holds the JWT, which lasts 24 hours, and
+  Gigya's login token (`"version": 2`), from which the client gets a new JWT when it runs out.
+  So after one login with the password, `BilkaToGoClient(email, token_storage=...)` works
+  without one for as long as Gigya accepts the token. When Gigya refuses it, or the session
+  was saved before login tokens, or the shop rejects a JWT, the client logs in with the
+  password; without one it raises `InvalidCredentialsError` ("The saved session has expired;
+  log in again with your password"). Treat the session file like the password.
 - Errors derive from `BilkaToGoError`: `InvalidCredentialsError`, `BilkaUnreachableError`,
   `BilkaBusyError`, `UnexpectedResponseError`, `OrderNotFoundError`, `UnknownPickupPointError`,
   `NoPickupPointError` and `CartChangeRejectedError`. `BilkaBusyError` means Bilka or its

@@ -31,6 +31,7 @@ from .const import (
     PRODUCT_LOOKUP_LIMIT,
     REQUEST_TIMEOUT_SECONDS,
     SEARCH_LIMIT,
+    SESSION_VERSION,
     WEB_PARAMS,
 )
 from .exceptions import (
@@ -90,6 +91,11 @@ class _ShopBusyError(BilkaBusyError):
     """Bilka answered a shop call with HTTP 429 or 5xx, which may pass if tried again."""
 
 
+class _GigyaRefusedError(UnexpectedResponseError):
+    """Gigya answered with an `errorCode` other than a wrong password, a rate limit or its own
+    server error, e.g. 403005 for a login token it no longer accepts."""
+
+
 class _ShopRefusedError(UnexpectedResponseError):
     """Bilka answered a shop call with an error body other than an expired session."""
 
@@ -114,6 +120,7 @@ class BilkaToGoClient:
         self._http = httpx_client or httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS)
         self._jwt: str | None = None
         self._jwt_expires_at: datetime | None = None
+        self._login_token: str | None = None
 
     async def __aenter__(self) -> Self:
         return self
@@ -135,19 +142,54 @@ class BilkaToGoClient:
 
     async def _login(self) -> str:
         if self._password is None:
+            if self._jwt is not None:
+                raise InvalidCredentialsError(
+                    "The saved session has expired; log in again with your password"
+                )
             raise InvalidCredentialsError("A password is needed to log in")
         login_token = await self._gigya_login(self._password)
         # The shop accepts Gigya's JWT on its own. The website also calls auth/LoginJWT, which
         # replaces the account's Cart with the one under its `cart` cookie, so we never do.
         jwt = await self._gigya_jwt(login_token)
-        expires_at = datetime.now(UTC) + timedelta(seconds=JWT_LIFETIME_SECONDS)
-        self._jwt = jwt
-        self._jwt_expires_at = expires_at
-        if self._token_storage is not None:
-            await self._token_storage.save(
-                {"email": self._email, "jwt": jwt, "jwt_expires_at": expires_at.isoformat()}
-            )
+        self._login_token = login_token
+        await self._start_session(jwt)
         return jwt
+
+    async def _renew_jwt(self) -> str | None:
+        """A fresh JWT from the saved login token, without the password (ADR 0002).
+
+        None when there is no token or Gigya refuses it; a refused token is dropped from the
+        saved session. When Gigya is busy or unreachable that is raised: the token may still
+        be good.
+        """
+        if self._login_token is None:
+            return None
+        try:
+            jwt = await self._gigya_jwt(self._login_token)
+        except _GigyaRefusedError, InvalidCredentialsError:
+            self._login_token = None
+            await self._save_session()
+            return None
+        await self._start_session(jwt)
+        return jwt
+
+    async def _start_session(self, jwt: str) -> None:
+        self._jwt = jwt
+        self._jwt_expires_at = datetime.now(UTC) + timedelta(seconds=JWT_LIFETIME_SECONDS)
+        await self._save_session()
+
+    async def _save_session(self) -> None:
+        if self._token_storage is None or self._jwt_expires_at is None:
+            return
+        session: dict[str, Any] = {
+            "version": SESSION_VERSION,
+            "email": self._email,
+            "jwt": self._jwt,
+            "jwt_expires_at": self._jwt_expires_at.isoformat(),
+        }
+        if self._login_token is not None:
+            session["login_token"] = self._login_token
+        await self._token_storage.save(session)
 
     async def get_orders(self, limit: int = 5, offset: int = 0) -> list[Order]:
         orders: list[Order] = []
@@ -456,9 +498,15 @@ class BilkaToGoClient:
         return [product for product in products if product is not None]
 
     async def _shop(self, method: str, path: str, params: dict[str, Any]) -> dict[str, Any]:
-        jwt = self._valid_jwt() or await self._restore_session() or await self._login()
+        jwt = (
+            self._valid_jwt()
+            or await self._restore_session()
+            or await self._renew_jwt()
+            or await self._login()
+        )
         data = await self._shop_request(method, path, params, jwt)
         if data is None or _is_session_expired(data):
+            # Bilka refused a JWT it should accept; only a login with the password is trusted.
             data = await self._shop_request(method, path, params, await self._login())
         if data is None or _is_session_expired(data):
             reason = f": {data['msg']}" if data is not None else ""
@@ -497,6 +545,9 @@ class BilkaToGoClient:
             return None
         self._jwt = jwt
         self._jwt_expires_at = expires_at
+        # A session saved before version 2 has no login token.
+        login_token = session.get("login_token")
+        self._login_token = login_token if isinstance(login_token, str) else None
         return self._valid_jwt()
 
     def _valid_jwt(self) -> str | None:
@@ -549,10 +600,12 @@ class BilkaToGoClient:
             raise BilkaBusyError(
                 f"Gigya {method} answered {error_code}" + (f": {message}" if message else "")
             )
-        if error_code != 0 or response.status_code != 200:
-            raise UnexpectedResponseError(
+        if error_code != 0:
+            raise _GigyaRefusedError(
                 f"Gigya {method} failed: {data.get('errorMessage', error_code)}"
             )
+        if response.status_code != 200:
+            raise UnexpectedResponseError(f"Gigya {method} failed with HTTP {response.status_code}")
         return data
 
     async def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
