@@ -42,6 +42,10 @@ _Avoid_: Item, row
 The date and time window in which the Order is collected or delivered, e.g. Tuesday 20/10, 12:00 to 14:00. Bilka's `deliveryDate` with `deliveryInterval.start` and `end` on an Order; on the Cart, the one chosen there, `deliveryDate.deliveryDate`, `intervalStart` and `intervalEnd`.
 _Avoid_: Delivery interval, time slot, delivery date
 
+**Slot Availability**:
+Whether a Pickup Slot can still be chosen: open, closed because its order deadline passed, or sold out. Bilka's `availability_bit`, `closed` and `closed_text` on each day and interval of `AvailableDeliveryDates` (ADR 0006).
+_Avoid_: Capacity, free slot
+
 **Pickup Point**:
 Where the customer collects the Order: a Bilka store such as Bilka Vejle, or a standalone point such as Pickup Fredericia. Each Pickup Point is served by one Store.
 _Avoid_: Pickup zone, delivery address, location

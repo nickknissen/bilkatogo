@@ -13,6 +13,7 @@ See the [README](../README.md) for the Python library and the command line tool.
 - Get a notification when the order is packed, with the Pickup Code at hand.
 - Hear about substitutions and Missing Items before you drive to the store.
 - Show the next Pickup Slot on a dashboard or in a shared family calendar.
+- Get reminded when no Pickup Slot is open in the coming days, or when one opens.
 - Add groceries to the Cart by voice or from a shopping-list automation.
 
 ## Supported accounts
@@ -49,10 +50,14 @@ own polling interval, keep it at 5 minutes or more so the traffic still looks li
 checking their order. To update now, use the `homeassistant.update_entity` action on any
 BilkaToGo entity.
 
+Each update also reads the Cart and the Pickup Slots on offer for it, two requests more, for
+the Next available pickup slot sensor. When Bilka fails to answer those, only that sensor is
+unavailable until the next update; the Order's entities keep their values.
+
 ## Entities
 
-All entities, except the calendar, describe the Current Order. Ready for pickup is on while the
-Current Order is Packed.
+All entities, except the calendar and Next available pickup slot, describe the Current Order.
+Ready for pickup is on while the Current Order is Packed.
 
 | Entity | State | Attributes |
 |---|---|---|
@@ -67,6 +72,7 @@ Current Order is Packed.
 | Substitution (event) | When the last substitution fired | Order Number, Original Product, Replacement Product, their Article Numbers, ordered quantity, quantity |
 | Missing item (event) | When the last Missing Item fired | Order Number, Product, Article Number, ordered and missing quantity |
 | Pickup slots (calendar) | On during a Pickup Slot | |
+| Next available pickup slot | Start of the earliest open Pickup Slot in the next 7 days for your Cart (timestamp) | End, availability, order before (Bilka's deadline, e.g. "i morgen kl. 6:00"), note, Pickup Point (left out for Home Delivery), number of open slots |
 
 Substitutions, Missing Items, the Pickup Code and the Order Total breakdown (Deposit, Service
 Fee, Packaging, Delivery Fee, Discount) are fetched once the order is packed. Before that the
@@ -74,6 +80,12 @@ Order Total is Bilka's estimate from the order history.
 
 An Order Status of Unknown (`unrecognized`) means Bilka sent a status code the integration does
 not know yet; the code is in the attribute. Without any order the entities have no state.
+
+Next available pickup slot follows whatever your Cart has on bilkatogo.dk, its Pickup Point or
+Home Delivery, not the Current Order. It has no state when every slot in the next 7 days is
+closed or sold out; the number of open slots is then 0. The integration never chooses a slot:
+do that on bilkatogo.dk. A Home Delivery night slot starts at 00:00 on its date, and Bilka
+delivers it from the evening before.
 
 The calendar holds an event for each of your 20 most recent Orders that has a Pickup Slot,
 upcoming and past, except Cancelled and Sold Out Orders. An event spans the Pickup Slot, is

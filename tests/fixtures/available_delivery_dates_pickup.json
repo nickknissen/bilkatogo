@@ -1,0 +1,248 @@
+{
+  "deliveryDate": "2026-11-11",
+  "intervalStart": "14:00",
+  "intervalEnd": "16:00",
+  "availableDates": [
+    "2026-11-09",
+    "2026-11-10"
+  ],
+  "availableIntervals": [
+    {
+      "date": "2026-11-08",
+      "intervals": [],
+      "availability_bit": 0,
+      "dayofweek": 7,
+      "closed_text": "",
+      "holiday": false
+    },
+    {
+      "date": "2026-11-09",
+      "intervals": [
+        {
+          "intervalTxt": "08:00 - 10:00",
+          "intervalStart": "08:00",
+          "intervalEnd": "10:00",
+          "availability_bit": 4,
+          "closed": 1,
+          "ship_before": 0,
+          "ship_time": "08:00",
+          "id": 2725,
+          "orderBeforeTime": "i morgen kl. 4:00",
+          "closed_text": "udsolgt",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "10:00 - 12:00",
+          "intervalStart": "10:00",
+          "intervalEnd": "12:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "10:00",
+          "id": 21,
+          "orderBeforeTime": "i morgen kl. 6:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "12:00 - 14:00",
+          "intervalStart": "12:00",
+          "intervalEnd": "14:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "12:00",
+          "id": 22,
+          "orderBeforeTime": "i morgen kl. 8:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "14:00 - 16:00",
+          "intervalStart": "14:00",
+          "intervalEnd": "16:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "14:00",
+          "id": 20,
+          "orderBeforeTime": "i morgen kl. 10:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "16:00 - 18:00",
+          "intervalStart": "16:00",
+          "intervalEnd": "18:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "16:00",
+          "id": 23,
+          "orderBeforeTime": "i morgen kl. 12:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "18:00 - 22:00",
+          "intervalStart": "18:00",
+          "intervalEnd": "22:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "18:00",
+          "id": 24,
+          "orderBeforeTime": "i morgen kl. 14:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        }
+      ],
+      "dayofweek": 1,
+      "availability_bit": 5,
+      "closed_text": "",
+      "holiday": false
+    },
+    {
+      "date": "2026-11-10",
+      "intervals": [
+        {
+          "intervalTxt": "08:00 - 10:00",
+          "intervalStart": "08:00",
+          "intervalEnd": "10:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "08:00",
+          "id": 2726,
+          "orderBeforeTime": "på tirsdag kl. 4:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "10:00 - 12:00",
+          "intervalStart": "10:00",
+          "intervalEnd": "12:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "10:00",
+          "id": 1940,
+          "orderBeforeTime": "på tirsdag kl. 6:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "12:00 - 14:00",
+          "intervalStart": "12:00",
+          "intervalEnd": "14:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "12:00",
+          "id": 1946,
+          "orderBeforeTime": "på tirsdag kl. 8:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "14:00 - 16:00",
+          "intervalStart": "14:00",
+          "intervalEnd": "16:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "14:00",
+          "id": 1952,
+          "orderBeforeTime": "på tirsdag kl. 10:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "16:00 - 18:00",
+          "intervalStart": "16:00",
+          "intervalEnd": "18:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "16:00",
+          "id": 1958,
+          "orderBeforeTime": "på tirsdag kl. 12:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        },
+        {
+          "intervalTxt": "18:00 - 22:00",
+          "intervalStart": "18:00",
+          "intervalEnd": "22:00",
+          "availability_bit": 1,
+          "closed": 0,
+          "ship_before": 0,
+          "ship_time": "18:00",
+          "id": 1964,
+          "orderBeforeTime": "på tirsdag kl. 14:00",
+          "closed_text": "",
+          "info": [
+            {
+              "message": "For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden."
+            }
+          ]
+        }
+      ],
+      "dayofweek": 2,
+      "availability_bit": 1,
+      "closed_text": "",
+      "holiday": false
+    }
+  ],
+  "orderBeforeMessage": "For at benytte det valgte tidsrum, skal du bestille senest",
+  "orderBeforeMessageSuffix": "bemærk at tidspunktet kan blive fuldt booket forinden.",
+  "noAvailableDates": false,
+  "eid": -1,
+  "uid": 900001,
+  "tid": "00000000-0000-0000-0000-000000000000",
+  "info_object": null
+}

@@ -15,6 +15,7 @@ from bilkatogo import (
     Order,
     OrderDetails,
     OrderStatus,
+    PickupSlots,
 )
 
 from .announcer import announcers
@@ -43,6 +44,8 @@ class BilkaToGoData:
     order: Order | None
     details: OrderDetails | None = None
     orders: list[Order] = field(default_factory=list)
+    # None when Bilka failed to answer for them this update.
+    pickup_slots: PickupSlots | None = None
     # What this update announced for the first time, by event type.
     announced: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
 
@@ -84,14 +87,28 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
                 translation_key="update_failed",
                 translation_placeholders={"error": str(err)},
             ) from err
+        pickup_slots = await self._async_fetch_pickup_slots()
         self.update_interval = polling_interval(order, dt_util.utcnow())
         announced = {}
         if details:
             for announcer in self.announcers:
                 announced[announcer.event_type] = await announcer.async_announce(details)
         return BilkaToGoData(
-            order=order, details=details, orders=history.orders, announced=announced
+            order=order,
+            details=details,
+            orders=history.orders,
+            pickup_slots=pickup_slots,
+            announced=announced,
         )
+
+    async def _async_fetch_pickup_slots(self) -> PickupSlots | None:
+        """The coming Pickup Slots for the Cart; None when Bilka fails to answer for them, so
+        that this never fails the update of the Order."""
+        try:
+            return await self.client.get_pickup_slots()
+        except BilkaToGoError as err:
+            LOGGER.debug("Could not fetch pickup slots: %s", err)
+            return None
 
     async def _async_fetch_details(self, order: Order | None) -> OrderDetails | None:
         """Fetch Order Details once the Current Order is Packed or later.

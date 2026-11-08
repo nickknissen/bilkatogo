@@ -41,6 +41,9 @@
       },
       "pickup_point": {
         "default": "mdi:store-marker"
+      },
+      "next_pickup_slot": {
+        "default": "mdi:calendar-clock"
       }
     }
   },

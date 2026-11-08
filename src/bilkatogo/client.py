@@ -14,6 +14,7 @@ from .const import (
     ALGOLIA_QUERIES_URL,
     ALGOLIA_SEARCH_KEY,
     API_BASE_URL,
+    BILKA_TIME_ZONE,
     CART_CHANGE_PAUSE_SECONDS,
     CART_CHANGE_RETRY_DELAYS,
     CART_PARAMS,
@@ -51,6 +52,7 @@ from .models import (
     OrderDetails,
     OrderHistory,
     PickupPoint,
+    PickupSlots,
     Product,
     SearchSort,
 )
@@ -334,6 +336,23 @@ class BilkaToGoClient:
     async def get_cart_pickup_point(self) -> PickupPoint | None:
         """The Pickup Point chosen in the Cart; None for Home Delivery or when none is chosen."""
         return cart_pickup_point((await self.get_cart_json()).get("deliveryAddress"))
+
+    async def get_pickup_slots(self, *, days: int = 7) -> PickupSlots:
+        """The Pickup Slots of the next `days` days, today included, with their availability,
+        for what the Cart has: its Pickup Point or Home Delivery. Never chooses one."""
+        if days < 1:
+            raise ValueError("days must be 1 or more")
+        delivery_address = (await self.get_cart_json()).get("deliveryAddress")
+        today = datetime.now(BILKA_TIME_ZONE).date()
+        return PickupSlots.from_dict(
+            await self.get_pickup_slots_json(),
+            delivery_address,
+            first_day=today,
+            last_day=today + timedelta(days=days - 1),
+        )
+
+    async def get_pickup_slots_json(self) -> dict[str, Any]:
+        return await self._shop("GET", "shop/v3/AvailableDeliveryDates", {})
 
     async def search(
         self,

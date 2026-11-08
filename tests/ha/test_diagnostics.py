@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from typing import Any, cast
 
+import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.components.diagnostics import (
     get_diagnostics_for_config_entry,
@@ -48,6 +49,9 @@ def pack_with_substitutions(bilka: FakeBilka) -> None:
     bilka.details[ORDER_NUMBER] = {"order": {**details["order"], "status": "Pakket"}}
 
 
+# The Pickup Slots kept are those of the coming days, so the day is fixed. The marker, unlike
+# `freezer.move_to`, freezes before `hass_client` issues its access token.
+@pytest.mark.freeze_time("2026-11-08T20:00:00+01:00")
 async def test_diagnostics_keep_products_and_store_but_redact_personal_data(
     hass: HomeAssistant,
     hass_client: ClientSessionGenerator,
@@ -70,3 +74,21 @@ async def test_diagnostics_keep_products_and_store_but_redact_personal_data(
     assert data["details"]["_raw"]["orderId"] == "order_1"
     assert {s["order_number"] for s in data["announced"]["substitution"]} == {"order_1"}
     assert diagnostics == snapshot(exclude=VOLATILE)
+
+
+@pytest.mark.freeze_time("2026-11-02T08:00:00+01:00")
+async def test_diagnostics_hold_no_home_delivery_address(
+    hass: HomeAssistant,
+    hass_client: ClientSessionGenerator,
+    setup_integration: SetupIntegration,
+    home_delivery_cart: FakeBilka,
+) -> None:
+    entry = await setup_integration()
+
+    diagnostics = await get_diagnostics_for_config_entry(hass, hass_client, entry)
+
+    data = cast("dict[str, Any]", diagnostics["data"])
+    assert data["pickup_slots"]["home_delivery"] is True
+    assert data["pickup_slots"]["pickup_point"] is None
+    assert not [value for value in leaves(diagnostics) if "Kunde Eksempel" in str(value)]
+    assert not set(leaves(data["pickup_slots"])) & PERSONAL_DATA

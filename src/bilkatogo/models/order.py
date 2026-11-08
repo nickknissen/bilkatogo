@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any
@@ -50,7 +50,9 @@ class PickupSlot(BilkaDataClass):
 
     @property
     def ends_at(self) -> datetime:
-        return datetime.combine(self.date, self.end, BILKA_TIME_ZONE)
+        """An end at or before the start, e.g. 20:00 to 06:00, is on the next day."""
+        day = self.date + timedelta(days=1) if self.end <= self.start else self.date
+        return datetime.combine(day, self.end, BILKA_TIME_ZONE)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PickupSlot | None:

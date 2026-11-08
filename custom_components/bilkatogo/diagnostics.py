@@ -1,4 +1,5 @@
 import dataclasses
+from datetime import date
 from typing import Any
 
 from homeassistant.components.diagnostics import REDACTED, async_redact_data
@@ -83,6 +84,19 @@ def _label_order_numbers(node: Any, labels: dict[str, str]) -> None:
                 _label_order_numbers(value, labels)
 
 
+def _text_keys(node: Any) -> Any:
+    """Diagnostics are written as JSON, whose keys must be text; `days_without_slots` is keyed
+    by date."""
+    if isinstance(node, list):
+        return [_text_keys(item) for item in node]
+    if isinstance(node, dict):
+        return {
+            key.isoformat() if isinstance(key, date) else key: _text_keys(value)
+            for key, value in node.items()
+        }
+    return node
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: BilkaToGoConfigEntry
 ) -> dict[str, Any]:
@@ -90,7 +104,7 @@ async def async_get_config_entry_diagnostics(
     diagnostics = async_redact_data(
         {
             "entry": entry.as_dict(),
-            "data": dataclasses.asdict(data) if data is not None else None,
+            "data": _text_keys(dataclasses.asdict(data)) if data is not None else None,
         },
         TO_REDACT,
     )

@@ -79,14 +79,24 @@ def prompt_password() -> str:
 def to_json(data: Any) -> str:
     def default(obj: Any) -> Any:
         if isinstance(obj, BilkaDataClass):
-            return dict(obj)
+            return {key: text_keys(value) for key, value in obj}
         if isinstance(obj, datetime | date | time):
             return obj.isoformat()
         if isinstance(obj, Decimal):
             return str(obj)
         raise TypeError(f"Cannot serialise {type(obj).__name__}")
 
-    return json.dumps(data, default=default, ensure_ascii=False)
+    return json.dumps(text_keys(data), default=default, ensure_ascii=False)
+
+
+def text_keys(value: Any) -> Any:
+    """JSON keys must be text; a date key, as in `days_without_slots`, becomes an ISO date."""
+    if not isinstance(value, dict):
+        return value
+    return {
+        key.isoformat() if isinstance(key, date) else key: text_keys(item)
+        for key, item in value.items()
+    }
 
 
 def check_redact(raw: bool, redact: bool) -> None:
@@ -370,6 +380,72 @@ async def pickup_points(
             for point in points
         ],
     )
+
+
+DaysOption = Annotated[
+    int, typer.Option("--days", min=1, help="Number of days to show, today included.")
+]
+
+
+@app.command("pickup-slots")
+@run_async
+async def pickup_slots(
+    ctx: typer.Context,
+    days: DaysOption = 7,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+    raw: RawOption = False,
+    redact: RedactOption = False,
+) -> None:
+    """Show the coming days' Pickup Slots for your Cart and whether they are open. Choose one
+    on bilkatogo.dk."""
+    check_redact(raw, redact)
+    if raw:
+        data = await with_session(
+            ctx, email, password, BilkaToGoClient.get_pickup_slots_json, "pickup slots"
+        )
+        print_raw(data, redact)
+        return
+    found = await with_session(
+        ctx, email, password, lambda client: client.get_pickup_slots(days=days), "pickup slots"
+    )
+    if as_json:
+        typer.echo(to_json({**dict(found), "next_open": found.next_open}))
+        return
+    typer.echo(f"{'Pickup Point':<13} {format_point(found.pickup_point, found.home_delivery)}")
+    typer.echo(f"{'Chosen':<13} {format_slot(found.chosen)}")
+    rows = [
+        (
+            slot.slot.date,
+            slot.slot.start,
+            [
+                format_day(slot.slot.date),
+                f"{slot.slot.start:%H:%M}",
+                f"{slot.slot.end:%H:%M}",
+                slot.availability.value.replace("_", " ").capitalize(),
+                slot.order_before or "",
+                slot.note or "",
+            ],
+        )
+        for slot in found.slots
+    ] + [
+        (day, time.min, [format_day(day), "", "", "No slots", "", reason])
+        for day, reason in found.days_without_slots.items()
+    ]
+    print_table(
+        ["Date", "Start", "End", "Availability", "Order before", "Note"],
+        [row for _, _, row in sorted(rows, key=lambda row: row[:2])],
+    )
+    next_open = found.next_open
+    if next_open is None:
+        typer.echo(f"No open Pickup Slots in the next {days} days.")
+    else:
+        typer.echo(f"Next open: {format_slot(next_open.slot)}")
+
+
+def format_day(day: date) -> str:
+    return f"{WEEKDAYS[day.weekday()]} {day:%d/%m}"
 
 
 SearchTextArgument = Annotated[str, typer.Argument(help="What to search for, e.g. skyr.")]

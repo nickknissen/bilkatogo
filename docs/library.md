@@ -89,6 +89,18 @@ asyncio.run(main())
   chosen in the Cart, `None` once it has ended (Bilka keeps the last Order's slot there for
   weeks), and `next_available_date` the next day Bilka can deliver. `warnings` holds Bilka's
   notices on the Cart, such as how far it is from the Minimum Order.
+- `get_pickup_slots(days=7)` returns `PickupSlots` for whatever the Cart has, its Pickup Point
+  or Home Delivery address, over the next `days` calendar days in Copenhagen, today included.
+  `slots` lists each `AvailablePickupSlot` with its `slot` (a `PickupSlot`), `availability` (a
+  `SlotAvailability`: `open`, `closed` once its order deadline has passed, or `sold_out`),
+  `order_before` (Bilka's deadline as the website words it, e.g. "på søndag kl. 15:00") and
+  `note` (Bilka's text, e.g. when a night slot is delivered, or else why it is closed).
+  `days_without_slots` maps each day without slots to Bilka's reason, e.g. "udsolgt", empty
+  when it gives none. `next_open` is the earliest open slot, `chosen` the slot chosen in the
+  Cart while it lies ahead, and `pickup_point` and `home_delivery` say what the slots are for.
+  It reads the Cart and Bilka's `AvailableDeliveryDates`; it never chooses a slot (ADR 0006).
+  A Home Delivery night slot runs from 00:00 to 06:00 on its date: Bilka delivers it the night
+  before. A `PickupSlot` whose end is at or before its start ends the next day.
 - `set_cart_quantity(article_number, quantity)` sets how many of a Product the Cart holds (0
   removes the Cart Line), `add_to_cart(article_number, quantity=1)` adds to what is there,
   `remove_from_cart(article_number, quantity=None)` takes `quantity` off what is there (the whole
@@ -108,5 +120,5 @@ asyncio.run(main())
 - Logging in on the website or in the app can undo Cart changes made through the library: Bilka
   replaces the Cart with the one that browser or app saw at its previous login, kept for up to
   7 days. Check the Cart after logging in there if you changed it from here.
-- `get_cart_json()`, `get_order_json(order)` and `get_current_order_json()` return Bilka's
-  answer untouched; `bilkatogo.redact.redact()` replaces the personal data in it.
+- `get_cart_json()`, `get_order_json(order)`, `get_current_order_json()` and
+  `get_pickup_slots_json()` return Bilka's answer untouched; `bilkatogo.redact.redact()` replaces the personal data in it.

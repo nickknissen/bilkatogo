@@ -574,6 +574,506 @@
           'status_code': 'Pakket',
         }),
       ]),
+      'pickup_slots': dict({
+        'chosen': dict({
+          '_raw': dict({
+            'deliveryDate': '2026-11-11',
+            'intervalEnd': '16:00',
+            'intervalStart': '14:00',
+          }),
+          'date': dict({
+            '__type': "<class 'datetime.date'>",
+            'isoformat': '2026-11-11',
+          }),
+          'end': dict({
+            '__type': "<class 'datetime.time'>",
+            'isoformat': '16:00:00',
+          }),
+          'start': dict({
+            '__type': "<class 'datetime.time'>",
+            'isoformat': '14:00:00',
+          }),
+        }),
+        'days_without_slots': dict({
+          '2026-11-08': '',
+        }),
+        'home_delivery': False,
+        'pickup_point': dict({
+          '_raw': dict({
+            'accessconditions_required': False,
+            'address': '**REDACTED**',
+            'blockbit': 0,
+            'city': '**REDACTED**',
+            'currentDeliveryDate': None,
+            'dawa_uid': None,
+            'facility': 3,
+            'hd_available': False,
+            'id': '3192',
+            'lat': '55.5972696',
+            'lng': '12.3247286',
+            'minimum_buy': 0,
+            'missing_hd_address': False,
+            'name': 'Bilka Waves, Hundige',
+            'nextAvailableDeliveryDate': '2026-10-28',
+            'recipient_name': '',
+            'sid': '1653',
+            'street': 'Over Bølgen 1',
+            'temporary_zipcode': None,
+            'zip': '2670',
+          }),
+          'address': '**REDACTED**',
+          'city': '**REDACTED**',
+          'name': 'Bilka Waves, Hundige',
+          'store_id': '1653',
+          'zip_code': '**REDACTED**',
+        }),
+        'slots': list([
+          dict({
+            '_raw': dict({
+              'availability_bit': 4,
+              'closed': 1,
+              'closed_text': 'udsolgt',
+              'id': 2725,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '10:00',
+              'intervalStart': '08:00',
+              'intervalTxt': '08:00 - 10:00',
+              'orderBeforeTime': 'i morgen kl. 4:00',
+              'ship_before': 0,
+              'ship_time': '08:00',
+            }),
+            'availability': 'sold_out',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 4:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '10:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '08:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 21,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '12:00',
+              'intervalStart': '10:00',
+              'intervalTxt': '10:00 - 12:00',
+              'orderBeforeTime': 'i morgen kl. 6:00',
+              'ship_before': 0,
+              'ship_time': '10:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 6:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '12:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '10:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 22,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '14:00',
+              'intervalStart': '12:00',
+              'intervalTxt': '12:00 - 14:00',
+              'orderBeforeTime': 'i morgen kl. 8:00',
+              'ship_before': 0,
+              'ship_time': '12:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 8:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '14:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '12:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 20,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '16:00',
+              'intervalStart': '14:00',
+              'intervalTxt': '14:00 - 16:00',
+              'orderBeforeTime': 'i morgen kl. 10:00',
+              'ship_before': 0,
+              'ship_time': '14:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 10:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '16:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '14:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 23,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '18:00',
+              'intervalStart': '16:00',
+              'intervalTxt': '16:00 - 18:00',
+              'orderBeforeTime': 'i morgen kl. 12:00',
+              'ship_before': 0,
+              'ship_time': '16:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 12:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '18:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '16:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 24,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '22:00',
+              'intervalStart': '18:00',
+              'intervalTxt': '18:00 - 22:00',
+              'orderBeforeTime': 'i morgen kl. 14:00',
+              'ship_before': 0,
+              'ship_time': '18:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'i morgen kl. 14:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-09',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '22:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '18:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 2726,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '10:00',
+              'intervalStart': '08:00',
+              'intervalTxt': '08:00 - 10:00',
+              'orderBeforeTime': 'på tirsdag kl. 4:00',
+              'ship_before': 0,
+              'ship_time': '08:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 4:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 4:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '10:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '08:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 1940,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '12:00',
+              'intervalStart': '10:00',
+              'intervalTxt': '10:00 - 12:00',
+              'orderBeforeTime': 'på tirsdag kl. 6:00',
+              'ship_before': 0,
+              'ship_time': '10:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 6:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '12:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '10:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 1946,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '14:00',
+              'intervalStart': '12:00',
+              'intervalTxt': '12:00 - 14:00',
+              'orderBeforeTime': 'på tirsdag kl. 8:00',
+              'ship_before': 0,
+              'ship_time': '12:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 8:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 8:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '14:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '12:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 1952,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '16:00',
+              'intervalStart': '14:00',
+              'intervalTxt': '14:00 - 16:00',
+              'orderBeforeTime': 'på tirsdag kl. 10:00',
+              'ship_before': 0,
+              'ship_time': '14:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 10:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 10:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '16:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '14:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 1958,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '18:00',
+              'intervalStart': '16:00',
+              'intervalTxt': '16:00 - 18:00',
+              'orderBeforeTime': 'på tirsdag kl. 12:00',
+              'ship_before': 0,
+              'ship_time': '16:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 12:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 12:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '18:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '16:00:00',
+              }),
+            }),
+          }),
+          dict({
+            '_raw': dict({
+              'availability_bit': 1,
+              'closed': 0,
+              'closed_text': '',
+              'id': 1964,
+              'info': list([
+                dict({
+                  'message': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+                }),
+              ]),
+              'intervalEnd': '22:00',
+              'intervalStart': '18:00',
+              'intervalTxt': '18:00 - 22:00',
+              'orderBeforeTime': 'på tirsdag kl. 14:00',
+              'ship_before': 0,
+              'ship_time': '18:00',
+            }),
+            'availability': 'open',
+            'note': 'For at benytte det valgte tidsrum, skal du bestille senest på tirsdag kl. 14:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+            'order_before': 'på tirsdag kl. 14:00',
+            'slot': dict({
+              '_raw': None,
+              'date': dict({
+                '__type': "<class 'datetime.date'>",
+                'isoformat': '2026-11-10',
+              }),
+              'end': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '22:00:00',
+              }),
+              'start': dict({
+                '__type': "<class 'datetime.time'>",
+                'isoformat': '18:00:00',
+              }),
+            }),
+          }),
+        ]),
+      }),
     }),
     'entry': dict({
       'data': dict({

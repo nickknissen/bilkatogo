@@ -178,6 +178,29 @@
       },
       "pickup_point": {
         "name": "Pickup point"
+      },
+      "next_pickup_slot": {
+        "name": "Next available pickup slot",
+        "state_attributes": {
+          "end": {
+            "name": "End"
+          },
+          "availability": {
+            "name": "Availability"
+          },
+          "order_before": {
+            "name": "Order before"
+          },
+          "note": {
+            "name": "Note"
+          },
+          "pickup_point": {
+            "name": "Pickup point"
+          },
+          "open_slots": {
+            "name": "Open slots"
+          }
+        }
       }
     }
   },
