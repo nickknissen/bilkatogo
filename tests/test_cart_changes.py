@@ -70,10 +70,10 @@ async def test_an_offer_limit_message_on_an_applied_change_is_a_warning(
 async def test_a_change_keeps_the_carts_own_warnings(home_delivery_cart: FakeBilka) -> None:
     home_delivery_cart.change_answer = load_fixture("change_line_count_warning.json")
 
-    cart = await change(home_delivery_cart, lambda client: client.set_cart_quantity("18364", 99))
+    cart = await change(home_delivery_cart, lambda client: client.set_cart_quantity("17389", 99))
 
     assert cart.warnings == [
-        "373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering",
+        "398,60 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering",
         "Ring venligst til kundeservice på 89 30 30 00 inden bestilling, "
         "for at sikre det ønskede antal",
     ]

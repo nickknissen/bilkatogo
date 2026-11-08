@@ -109,7 +109,12 @@ async def test_home_delivery_cart_has_no_pickup_point_but_a_store(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "marker", [{"dawa_uid": None}, {"recipient_name": ""}], ids=["by_name", "by_dawa_uid"]
+    "marker",
+    [
+        {"dawa_uid": None},
+        {"recipient_name": "", "dawa_uid": "0a3f50a0-0000-0000-0000-000000000000"},
+    ],
+    ids=["by_name", "by_dawa_uid"],
 )
 async def test_either_home_address_field_marks_home_delivery(
     home_delivery_cart: FakeBilka, marker: dict
@@ -129,9 +134,17 @@ async def test_home_delivery_cart_has_its_minimum_order_and_delivery_fee(
     cart = await fetch(home_delivery_cart)
 
     assert cart.minimum_order == Decimal("500.00")
-    assert cart.minimum_left == Decimal("373.00")
+    assert cart.minimum_left == Decimal("398.60")
     assert cart.delivery_fee == Decimal("39.00")
-    assert cart.next_available_date == date(2026, 11, 3)
+    assert cart.next_available_date == date(2026, 11, 9)
+
+
+@pytest.mark.asyncio
+async def test_delivery_fee_is_not_a_cart_line(home_delivery_cart: FakeBilka) -> None:
+    cart = await fetch(home_delivery_cart)
+
+    assert [line.product for line in cart.lines] == ["Brun farin", "Flormelis"]
+    assert cart.total == Decimal("101.40")
 
 
 @pytest.mark.asyncio
@@ -165,7 +178,7 @@ async def test_minimum_order_not_reached_is_a_warning_without_html(
     cart = await fetch(home_delivery_cart)
 
     assert cart.warnings == [
-        "373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"
+        "398,60 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"
     ]
 
 

@@ -170,3 +170,21 @@ def test_redacted_home_delivery_cart_contains_no_personal_values(
     address = json.loads(result.output)["deliveryAddress"]
     assert address["recipient_name"] == "Kunde Eksempel"
     assert (address["zip"], address["city"]) == ("9999", "Eksempelby")
+
+
+def test_redacted_home_delivery_cart_replaces_another_name_and_temporary_zip_code(
+    invoke, logged_in_cart: FakeBilka
+) -> None:
+    # Captured live (#76): the home `deliveryAddress.name` can name someone other than
+    # `recipient_name`, and a zip code typed in for Home Delivery is `temporary_zipcode`.
+    logged_in_cart.cart_contents["deliveryAddress"].update(
+        recipient_name="Karen Kundesen", name="Bo Beboersen", temporary_zipcode="5230"
+    )
+
+    result = invoke("cart", "--raw", "--redact")
+
+    assert result.exit_code == 0, result.output
+    assert "Beboersen" not in result.output
+    address = json.loads(result.output)["deliveryAddress"]
+    assert address["name"] == "Kunde Eksempel"
+    assert address["temporary_zipcode"] == "9999"

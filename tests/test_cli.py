@@ -677,18 +677,18 @@ def test_home_delivery_cart_prints_the_minimum_order_and_not_the_address(
     result = invoke("cart", "--email", EMAIL, "--password", PASSWORD)
 
     assert result.exit_code == 0, result.output
-    assert result.output.splitlines()[6:] == [
+    assert result.output.splitlines()[1 + 2 :] == [
         "Pickup Point   Home Delivery",
-        "Pickup Slot    ",
-        "Next Available 2026-11-03",
-        "Cart Total     127.00 kr",
+        "Pickup Slot    Wed 11/11 15:00-22:00",
+        "Next Available 2026-11-09",
+        "Cart Total     101.40 kr",
         "Deposit        0.00 kr",
         "Service Fee    39.00 kr",
         "Packaging      0.00 kr",
         "Delivery Fee   39.00 kr",
-        "Discount       9.50 kr",
-        "Minimum Order  500.00 kr (373.00 kr left)",
-        "Warning from Bilka: 373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. "
+        "Discount       0.00 kr",
+        "Minimum Order  500.00 kr (398.60 kr left)",
+        "Warning from Bilka: 398,60 kr. fra minimumskøb på 500,00 kr. alt inkl. "
         "for at få hjemmelevering",
     ]
     for personal in ("Kunde Eksempel", "Testvej", "Eksempelby"):
@@ -729,9 +729,9 @@ def test_home_delivery_cart_json(invoke, home_delivery_cart: FakeBilka) -> None:
         "store_id": "1661",
         "delivery_fee": "39.00",
         "minimum_order": "500.00",
-        "minimum_left": "373.00",
-        "next_available_date": "2026-11-03",
-        "warnings": ["373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
+        "minimum_left": "398.60",
+        "next_available_date": "2026-11-09",
+        "warnings": ["398,60 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
     }
 
 

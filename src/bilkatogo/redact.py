@@ -37,6 +37,9 @@ PLACEHOLDERS: dict[str, Any] = {
 }
 ORDER_NUMBER_KEYS = frozenset({"orderId", "order_id", "orderNumber", "order_number"})
 HOME_ADDRESS_PLACEHOLDERS: dict[str, Any] = {
+    # A Pickup Point's name is public; a home address's can be anyone in the household.
+    "name": NAME,
+    "temporary_zipcode": "9999",
     "address": "Testvej 1",
     "street": "Testvej 1",
     "location": "Testvej 1",
