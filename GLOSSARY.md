@@ -39,7 +39,7 @@ One ordered product with its quantity inside an Order.
 _Avoid_: Item, row
 
 **Pickup Slot**:
-The date and time window in which the Order is collected, e.g. Tuesday 20/10, 12:00 to 14:00.
+The date and time window in which the Order is collected or delivered, e.g. Tuesday 20/10, 12:00 to 14:00. Bilka's `deliveryDate` with `deliveryInterval.start` and `end` on an Order; on the Cart, the one chosen there, `deliveryDate.deliveryDate`, `intervalStart` and `intervalEnd`.
 _Avoid_: Delivery interval, time slot, delivery date
 
 **Pickup Point**:
@@ -47,7 +47,7 @@ Where the customer collects the Order: a Bilka store such as Bilka Vejle, or a s
 _Avoid_: Pickup zone, delivery address, location
 
 **Store**:
-The Bilka that packs the Order and whose assortment, Prices, Offers and stock apply, e.g. Bilka Vejle.
+The Bilka that packs the Order and whose assortment, Prices, Offers and stock apply, e.g. Bilka Vejle. Bilka's `sid` on a Pickup Point and on the Cart's `deliveryAddress`.
 _Avoid_: Warehouse, shop, sid
 
 **Pickup Code**:
@@ -74,14 +74,14 @@ What Bilka charges for bags, shown on the website as "Emballage". Bilka's `stat.
 _Avoid_: Bags
 
 **Delivery Fee**:
-What Bilka charges for Home Delivery.
+What Bilka charges for Home Delivery. Bilka's `stat.delivery_price` on the Order and the Cart.
 
 **Discount**:
 The total saved on the Order through Offers, membership and vouchers. The sum of Bilka's `stat.promo`, `stat.membership_offer_discount`, `stat.personalized_offer_discount` and the `amount` of each voucher in `stat.vouchers`, on the Order and the Cart.
 _Avoid_: Promo, savings
 
 **Home Delivery**:
-An Order that is brought to the customer's address instead of collected at a Pickup Point.
+An Order that is brought to the customer's address instead of collected at a Pickup Point. Bilka's `pickupzone.home_delivery` on an Order. The Cart has no such flag: its `deliveryAddress` is a home address when it has a `dawa_uid` or a `recipient_name`, both empty for a Pickup Point (ADR 0005).
 
 **Minimum Order**:
 The smallest Cart total Bilka accepts for Home Delivery; `minimum_buy`. Pickup has none in every capture.
