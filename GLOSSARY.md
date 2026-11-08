@@ -11,7 +11,7 @@ One purchase placed in BilkaToGo, identified by its Order Number, collected or d
 _Avoid_: Purchase, basket, cart (a Cart is the not-yet-placed order)
 
 **Cart**:
-The customer's Order before it is placed: its Cart Lines and the Pickup Point they have chosen. Product search uses that Pickup Point's Store unless told otherwise.
+The customer's Order before it is placed: its Cart Lines and how it is to be received, either collected at the Pickup Point they have chosen or brought by Home Delivery. Either way one Store serves it, and product search uses that Store unless told otherwise.
 _Avoid_: Basket, kurv
 
 **Cart Line**:
@@ -82,6 +82,10 @@ _Avoid_: Promo, savings
 
 **Home Delivery**:
 An Order that is brought to the customer's address instead of collected at a Pickup Point.
+
+**Minimum Order**:
+The smallest Cart total Bilka accepts for Home Delivery; `minimum_buy`. Pickup has none in every capture.
+_Avoid_: Minimum buy, minimumskøb (use only as the Danish alias)
 
 ### Order Status
 

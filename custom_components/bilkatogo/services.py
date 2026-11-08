@@ -172,7 +172,21 @@ def _cart_response(cart: Cart) -> dict[str, Any]:
         "service_fee": float(cart.service_fee),
         "packaging": float(cart.packaging),
         "discount": float(cart.discount),
+        "delivery_fee": float(cart.delivery_fee),
+        "home_delivery": cart.home_delivery,
+        # A Home Delivery Cart has no Pickup Point, so the home address never shows here.
         "pickup_point": cart.pickup_point.name if cart.pickup_point else None,
+        "pickup_slot": {
+            "starts_at": cart.pickup_slot.starts_at.isoformat(),
+            "ends_at": cart.pickup_slot.ends_at.isoformat(),
+        }
+        if cart.pickup_slot
+        else None,
+        "minimum_order": float(cart.minimum_order) if cart.minimum_order is not None else None,
+        "minimum_left": float(cart.minimum_left),
+        "next_available_date": cart.next_available_date.isoformat()
+        if cart.next_available_date
+        else None,
         "warnings": list(cart.warnings),
     }
 

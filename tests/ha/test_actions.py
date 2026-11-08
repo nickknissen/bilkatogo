@@ -3,6 +3,7 @@ from typing import Any
 import httpx
 import probatio
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
@@ -60,7 +61,13 @@ async def test_add_to_cart_adds_to_an_existing_cart_line_and_returns_the_cart(
         "service_fee": 39.0,
         "packaging": 0.0,
         "discount": 9.5,
+        "delivery_fee": 0.0,
+        "home_delivery": False,
         "pickup_point": "Bilka Vejle",
+        "pickup_slot": None,
+        "minimum_order": None,
+        "minimum_left": 0.0,
+        "next_available_date": "2026-10-27",
         "warnings": [],
     }
 
@@ -229,8 +236,12 @@ async def test_remove_from_cart_without_a_quantity_drops_the_cart_line(
 
 
 async def test_get_cart_returns_the_cart_without_changing_it(
-    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
+    freezer.move_to("2026-10-30T12:00:00+01:00")
     await setup_integration()
 
     response = await call(hass, "get_cart", {})
@@ -256,9 +267,44 @@ async def test_get_cart_returns_the_cart_without_changing_it(
         "service_fee": 39.0,
         "packaging": 0.0,
         "discount": 9.5,
+        "delivery_fee": 0.0,
+        "home_delivery": False,
         "pickup_point": "Bilka Vejle",
+        "pickup_slot": {
+            "starts_at": "2026-11-01T14:00:00+01:00",
+            "ends_at": "2026-11-01T16:00:00+01:00",
+        },
+        "minimum_order": None,
+        "minimum_left": 0.0,
+        "next_available_date": "2026-10-27",
         "warnings": [],
     }
+
+
+async def test_get_cart_for_home_delivery_leaves_out_the_address(
+    hass: HomeAssistant, setup_integration: SetupIntegration, home_delivery_cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(hass, "get_cart", {})
+
+    assert {key: value for key, value in response.items() if key != "lines"} == {
+        "total": 127.0,
+        "deposit": 0.0,
+        "service_fee": 39.0,
+        "packaging": 0.0,
+        "discount": 9.5,
+        "delivery_fee": 39.0,
+        "home_delivery": True,
+        "pickup_point": None,
+        "pickup_slot": None,
+        "minimum_order": 500.0,
+        "minimum_left": 373.0,
+        "next_available_date": "2026-11-03",
+        "warnings": ["373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
+    }
+    for personal in ("Kunde Eksempel", "Testvej", "Eksempelby", "9999"):
+        assert personal not in str(response)
 
 
 async def test_search_returns_products_at_the_carts_store(

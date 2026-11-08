@@ -85,18 +85,22 @@ Order Status sensor shows the status.
 
 | Action | Fields | Response |
 |---|---|---|
-| `bilkatogo.add_to_cart` | `article_number`, `quantity` (default 1) | Optional: the Cart, with its Cart Lines (Product, Article Number, quantity, Price, line total), total, Deposit, Service Fee, Packaging, Discount, Pickup Point and Bilka's warnings |
+| `bilkatogo.add_to_cart` | `article_number`, `quantity` (default 1) | Optional: the Cart, with its Cart Lines (Product, Article Number, quantity, Price, line total), total, Deposit, Service Fee, Packaging, Delivery Fee, Discount, `home_delivery`, Pickup Point, Pickup Slot, Minimum Order and how much is left to it, the next available date and Bilka's warnings |
 | `bilkatogo.add_items_to_cart` | `items`: a list of `article_number` and `quantity` (default 1) | Optional: `changes`, per Product the quantity requested and applied, `status` (`applied`, `rejected`, `skipped`) and Bilka's message; and the `cart`, as for `add_to_cart`. Fails only when none was added |
 | `bilkatogo.remove_from_cart` | `article_number`, `quantity` (default: all of it) | Optional: the Cart, as for `add_to_cart` |
 | `bilkatogo.search` | `query`, `limit` (default 10), `in_stock`, `on_offer`, `in_leaflet` (default false), `sort` (`relevance`, `price`, `unit_price`) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
 | `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
 
 `add_to_cart` adds to what is already in the Cart and `remove_from_cart` takes `quantity` off
-it, or the whole Cart Line without one; neither places an Order. `search` searches at the
-Store serving the Cart's Pickup Point, so choose one on bilkatogo.dk first. `sort` orders the
-`limit` best matches by what one costs now, the Offer Price where there is one; it does not
-search the whole assortment for the cheapest. With more than one
-account added, pass `config_entry_id`. A script that searches and adds the first hit:
+it, or the whole Cart Line without one; neither places an Order. In the Cart response
+`pickup_point` is the Pickup Point's name, `null` for Home Delivery (the response never holds
+your home address); `pickup_slot` has `starts_at` and `ends_at`, `null` when none is chosen or
+the chosen one has passed; `minimum_order` is `null` when Bilka sets none, as for pickup; and
+`warnings` includes how far the Cart is from the Minimum Order. `search` searches at the Store
+serving the Cart, for pickup or Home Delivery, so choose either on bilkatogo.dk first. `sort`
+orders the `limit` best matches by what one costs now, the Offer Price where there is one; it
+does not search the whole assortment for the cheapest. With more than one account added, pass
+`config_entry_id`. A script that searches and adds the first hit:
 
 ```yaml
 script:

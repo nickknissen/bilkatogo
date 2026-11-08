@@ -128,10 +128,22 @@ async def test_unknown_pickup_point_does_not_search(bilka: FakeBilka) -> None:
 
 
 @pytest.mark.asyncio
+async def test_home_delivery_cart_searches_the_store_that_delivers_it(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    [product] = await search(home_delivery_cart, "mozzarella")
+
+    assert algolia_query(home_delivery_cart.calls("algolia")[0])["filters"] == (
+        "isInAssortmentIn:1661 AND nonsearchable:false"
+    )
+    assert product.store_id == "1661"
+
+
+@pytest.mark.asyncio
 async def test_cart_without_a_pickup_point_asks_for_one(bilka: FakeBilka) -> None:
     bilka.cart_contents = {**bilka.cart_contents, "deliveryAddress": None}
 
-    with pytest.raises(NoPickupPointError, match="Pickup Point"):
+    with pytest.raises(NoPickupPointError, match="Pickup Point or Home Delivery address"):
         await search(bilka, "skyr")
 
     assert bilka.calls("algolia") == []

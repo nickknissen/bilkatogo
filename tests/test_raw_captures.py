@@ -145,6 +145,15 @@ def test_redacted_cart_capture_keeps_the_public_pickup_point(
     assert redacted["lines"] == cart["lines"]
 
 
+def test_home_delivery_cart_fixture_is_already_redacted(
+    invoke, home_delivery_cart: FakeBilka
+) -> None:
+    result = invoke("cart", "--raw", "--redact")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == load_fixture("cart_home.json")
+
+
 def test_redacted_home_delivery_cart_contains_no_personal_values(
     invoke, logged_in_cart: FakeBilka
 ) -> None:

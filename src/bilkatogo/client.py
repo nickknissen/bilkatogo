@@ -50,6 +50,7 @@ from .models import (
     Product,
     SearchSort,
 )
+from .models.cart import cart_pickup_point, cart_store_id
 from .models.product import sort_products
 from .token_storage import TokenStorage
 
@@ -207,7 +208,7 @@ class BilkaToGoClient:
     async def set_cart_quantity(self, article_number: str, quantity: int) -> Cart:
         warnings = await self._change_line_count(article_number, quantity)
         cart = await self.get_cart()
-        cart.warnings = warnings
+        cart.warnings.extend(warnings)
         return cart
 
     async def set_cart_quantities(self, quantities: Mapping[str, int]) -> CartChanges:
@@ -327,8 +328,8 @@ class BilkaToGoClient:
         return await self.get_cart()
 
     async def get_cart_pickup_point(self) -> PickupPoint | None:
-        address = (await self.get_cart_json()).get("deliveryAddress")
-        return PickupPoint.from_delivery_address(address) if address else None
+        """The Pickup Point chosen in the Cart; None for Home Delivery or when none is chosen."""
+        return cart_pickup_point((await self.get_cart_json()).get("deliveryAddress"))
 
     async def search(
         self,
@@ -341,20 +342,23 @@ class BilkaToGoClient:
         in_leaflet: bool = False,
         sort: SearchSort = SearchSort.RELEVANCE,
     ) -> list[Product]:
-        """Products matching `text` at the Store of a Pickup Point, the Cart's by default.
+        """Products matching `text` at the Store of a Pickup Point, by default the Store that
+        serves the Cart, whether it is collected or brought by Home Delivery.
 
         `in_stock` keeps Products in stock at the Store, `on_offer` those with an Offer or a
         Multibuy Offer there, `in_leaflet` those in this week's Leaflet. `sort` orders the
         `limit` best matches; it does not search the whole assortment for the cheapest.
         """
-        point = (
-            await self.get_pickup_point(pickup_point)
+        store_id = (
+            (await self.get_pickup_point(pickup_point)).store_id
             if pickup_point is not None
-            else await self.get_cart_pickup_point()
+            else cart_store_id((await self.get_cart_json()).get("deliveryAddress"))
         )
-        if point is None or point.store_id is None:
-            raise NoPickupPointError("No Pickup Point chosen in the Cart; name one to search at")
-        store_id = point.store_id
+        if store_id is None:
+            raise NoPickupPointError(
+                "No Pickup Point or Home Delivery address chosen in the Cart; "
+                "name a Pickup Point to search at"
+            )
         filters = [f"isInAssortmentIn:{store_id}", "nonsearchable:false"]
         if in_stock:
             filters.append(f"inStockStore:{store_id}")

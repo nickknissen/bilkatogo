@@ -19,7 +19,8 @@ class UnknownPickupPointError(BilkaToGoError):
 
 
 class NoPickupPointError(BilkaToGoError):
-    """No Pickup Point was named and none is chosen in the Cart."""
+    """No Pickup Point was named and the Cart has neither a Pickup Point nor a Home Delivery
+    address."""
 
 
 class OrderNotFoundError(BilkaToGoError):

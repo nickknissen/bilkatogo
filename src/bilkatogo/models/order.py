@@ -65,6 +65,19 @@ class PickupSlot(BilkaDataClass):
         except KeyError, TypeError, ValueError:
             return None
 
+    @classmethod
+    def from_cart(cls, data: dict[str, Any]) -> PickupSlot | None:
+        """The Pickup Slot in the Cart's `deliveryDate`; None when any part is missing."""
+        try:
+            return cls(
+                _raw=data,
+                date=date.fromisoformat(data["deliveryDate"]),
+                start=time.fromisoformat(data["intervalStart"]),
+                end=time.fromisoformat(data["intervalEnd"]),
+            )
+        except KeyError, TypeError, ValueError:
+            return None
+
 
 @dataclass
 class PickupPoint(BilkaDataClass):
