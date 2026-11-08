@@ -14,9 +14,10 @@ class BilkaBusyError(BilkaToGoError):
     """Bilka or its login service is temporarily unavailable (rate limit or server error).
     Retry later; the credentials are not at fault."""
 
-    def __init__(self, detail: str) -> None:
+    def __init__(self, detail: str | None = None) -> None:
+        cause = f" ({detail})" if detail else ""
         super().__init__(
-            f"Bilka or its login service is temporarily unavailable ({detail}); try again later"
+            f"Bilka or its login service is temporarily unavailable{cause}; try again later"
         )
 
 

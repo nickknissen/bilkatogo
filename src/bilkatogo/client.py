@@ -380,6 +380,10 @@ class BilkaToGoClient:
         Products kept out of `search()` are found too.
         """
         wanted = list(dict.fromkeys(article_numbers))
+        for article_number in wanted:
+            # Article Numbers go into Algolia's filter as they are, so only digits pass.
+            if not (article_number.isascii() and article_number.isdigit()):
+                raise ValueError(f"{article_number!r} is not an Article Number")
         if len(wanted) > PRODUCT_LOOKUP_LIMIT:
             raise ValueError(
                 f"At most {PRODUCT_LOOKUP_LIMIT} Article Numbers can be looked up at once"
@@ -456,7 +460,7 @@ class BilkaToGoClient:
         if response.status_code == 401:
             return None
         if response.status_code == 429 or response.status_code >= 500:
-            raise _ShopBusyError(f"{path} answered HTTP {response.status_code}")
+            raise _ShopBusyError(f"{path} failed with HTTP {response.status_code}")
         if response.status_code != 200:
             raise UnexpectedResponseError(f"{path} failed with HTTP {response.status_code}")
         return self._json(response, path)

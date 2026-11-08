@@ -145,12 +145,16 @@ _Avoid_: GTIN, barcode, stregkode
 How much one unit of a Product holds, e.g. 750 g or 1,5 l. Bilka's `units` and `unitsOfMeasure`, on an Order Line's `product` and on an Algolia hit. A Replacement Product often has the Original Product's name and differs only in Size, e.g. Klementiner 750 g replaced by Klementiner 900 g.
 _Avoid_: Weight, volume, pack size, netcontent
 
+**Category**:
+Where a Product sits in Bilka's assortment, most general first, e.g. "Mejeri & køl > Mejeri > Ost > Revet ost & topping > Revet mozzarella". Algolia's `deepestCategoryPath` with its `productType` after it, unless the path already ends with it.
+_Avoid_: Department, hierarchy, product type (on its own)
+
 **Price**:
 What one unit of a Product normally costs at a Store. On a Cart Line it is Bilka's `product.price`; the line's `unitprice` already has the Offer or Multibuy Offer applied.
 _Avoid_: List price, normal price
 
 **Offer**:
-A temporary lower Price for a Product at a Store, with Bilka's label (e.g. "Skarp pris"), an end date and optionally a limit per customer, shown on the website as "tilbud".
+A temporary lower Price for a Product at a Store, with Bilka's label (e.g. "Skarp pris"), an end date and optionally a limit per customer, shown on the website as "tilbud". The label is Algolia's `storeData.<sid>.offerDescription`; "Se Her", Bilka's placeholder for a leaflet Offer without a text of its own, reads "Tilbud".
 _Avoid_: Promo, sale, campaign
 
 **Offer Price**:

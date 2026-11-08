@@ -91,6 +91,17 @@ async def test_no_article_numbers_asks_bilka_nothing(bilka: FakeBilka) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("article_number", ["18381 19753", "18381) OR (x", "", "skyr"])
+async def test_something_that_is_not_an_article_number_is_refused(
+    bilka: FakeBilka, article_number: str
+) -> None:
+    with pytest.raises(ValueError, match="Article Number"):
+        await get_products(bilka, ["18381", article_number])
+
+    assert bilka.requests == []
+
+
+@pytest.mark.asyncio
 async def test_more_than_a_thousand_article_numbers_is_refused(bilka: FakeBilka) -> None:
     with pytest.raises(ValueError, match="1000"):
         await get_products(bilka, [str(number) for number in range(1001)])

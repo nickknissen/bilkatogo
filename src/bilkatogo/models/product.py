@@ -69,10 +69,7 @@ class Product(BilkaDataClass):
             multibuy_offer=label if multibuy and label else None,
             ean=hit.get("gtin") or None,
             size=size_of(hit),
-            category=" > ".join(
-                part for part in (hit.get("deepestCategoryPath"), hit.get("productType")) if part
-            )
-            or None,
+            category=_category(hit.get("deepestCategoryPath"), hit.get("productType")),
         )
 
 
@@ -87,6 +84,14 @@ def size_of(product: dict[str, Any]) -> str | None:
     if not unit or not units.is_finite() or units <= 0:
         return None
     return f"{units.normalize():f}".replace(".", ",") + f" {unit}"
+
+
+def _category(path: str | None, product_type: str | None) -> str | None:
+    """Bilka's category path with the product type after it, unless the path ends with it."""
+    parts: list[str] = path.split(" > ") if path else []
+    if product_type and (not parts or parts[-1] != product_type):
+        parts.append(product_type)
+    return " > ".join(parts) or None
 
 
 def _offer_label(label: str) -> str:

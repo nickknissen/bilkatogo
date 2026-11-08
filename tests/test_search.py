@@ -148,6 +148,7 @@ async def test_size_is_written_as_the_website_does(bilka: FakeBilka) -> None:
     ("path", "product_type", "category"),
     [
         ("Frugt & grønt > Frugt > Bananer", "", "Frugt & grønt > Frugt > Bananer"),
+        ("Frugt & grønt > Frugt > Bananer", "Bananer", "Frugt & grønt > Frugt > Bananer"),
         ("", "Skyr m. smag", "Skyr m. smag"),
         (None, None, None),
     ],
