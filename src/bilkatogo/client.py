@@ -1,6 +1,6 @@
 import json
 from asyncio import sleep
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from types import TracebackType
 from typing import Any, Self
@@ -21,15 +21,19 @@ from .const import (
     GIGYA_API_KEY,
     GIGYA_BASE_URL,
     GIGYA_INVALID_LOGIN_ID,
+    GIGYA_RATE_LIMIT,
+    GIGYA_SERVER_ERRORS,
     JWT_LIFETIME_SECONDS,
     JWT_RENEWAL_MARGIN,
     ORDER_HISTORY_PAGE_SIZE,
     ORDER_HISTORY_PARAMS,
+    PRODUCT_LOOKUP_LIMIT,
     REQUEST_TIMEOUT_SECONDS,
     SEARCH_LIMIT,
     WEB_PARAMS,
 )
 from .exceptions import (
+    BilkaBusyError,
     BilkaUnreachableError,
     CartChangeRejectedError,
     InvalidCredentialsError,
@@ -51,7 +55,7 @@ from .models import (
     SearchSort,
 )
 from .models.cart import cart_pickup_point, cart_store_id
-from .models.product import sort_products
+from .models.product import product_attributes, sort_products
 from .token_storage import TokenStorage
 
 
@@ -80,7 +84,7 @@ def _is_session_expired(data: dict[str, Any]) -> bool:
     return (isinstance(uid, int) and uid <= 0) or data.get("code") == 1
 
 
-class _ShopBusyError(UnexpectedResponseError):
+class _ShopBusyError(BilkaBusyError):
     """Bilka answered a shop call with HTTP 429 or 5xx, which may pass if tried again."""
 
 
@@ -349,6 +353,52 @@ class BilkaToGoClient:
         Multibuy Offer there, `in_leaflet` those in this week's Leaflet. `sort` orders the
         `limit` best matches; it does not search the whole assortment for the cheapest.
         """
+        store_id = await self._store_id(pickup_point)
+        filters = [f"isInAssortmentIn:{store_id}", "nonsearchable:false"]
+        if in_stock:
+            filters.append(f"inStockStore:{store_id}")
+        if on_offer:
+            filters.append(f"isInOffer:{store_id}")
+        if in_leaflet:
+            filters.append("isInCurrentLeaflet:true")
+        products = await self._query_products(
+            store_id,
+            query=text,
+            hitsPerPage=limit,
+            removeWordsIfNoResults="allOptional",
+            filters=" AND ".join(filters),
+        )
+        return sort_products(products, sort)
+
+    async def get_products(
+        self, article_numbers: Iterable[str], *, pickup_point: str | None = None
+    ) -> list[Product]:
+        """The Products with these Article Numbers at the Store of a Pickup Point, by default
+        the Store that serves the Cart, in the order asked.
+
+        Article Numbers Bilka does not know, or that the Store does not sell, are left out.
+        Products kept out of `search()` are found too.
+        """
+        wanted = list(dict.fromkeys(article_numbers))
+        if len(wanted) > PRODUCT_LOOKUP_LIMIT:
+            raise ValueError(
+                f"At most {PRODUCT_LOOKUP_LIMIT} Article Numbers can be looked up at once"
+            )
+        if not wanted:
+            return []
+        store_id = await self._store_id(pickup_point)
+        ids = " OR ".join(f"objectID:{article_number}" for article_number in wanted)
+        products = await self._query_products(
+            store_id,
+            query="",
+            hitsPerPage=len(wanted),
+            filters=f"({ids}) AND isInAssortmentIn:{store_id}",
+        )
+        by_number = {product.article_number: product for product in products}
+        return [by_number[number] for number in wanted if number in by_number]
+
+    async def _store_id(self, pickup_point: str | None) -> str:
+        """The Store of the named Pickup Point, or else the one that serves the Cart."""
         store_id = (
             (await self.get_pickup_point(pickup_point)).store_id
             if pickup_point is not None
@@ -359,23 +409,10 @@ class BilkaToGoClient:
                 "No Pickup Point or Home Delivery address chosen in the Cart; "
                 "name a Pickup Point to search at"
             )
-        filters = [f"isInAssortmentIn:{store_id}", "nonsearchable:false"]
-        if in_stock:
-            filters.append(f"inStockStore:{store_id}")
-        if on_offer:
-            filters.append(f"isInOffer:{store_id}")
-        if in_leaflet:
-            filters.append("isInCurrentLeaflet:true")
-        params = urlencode(
-            {
-                "query": text,
-                "hitsPerPage": limit,
-                "filters": " AND ".join(filters),
-                "attributesToRetrieve": json.dumps(
-                    ["name", "brand", "price", f"storeData.{store_id}"]
-                ),
-            }
-        )
+        return store_id
+
+    async def _query_products(self, store_id: str, **params: Any) -> list[Product]:
+        params["attributesToRetrieve"] = json.dumps(product_attributes(store_id))
         response = await self._request(
             "POST",
             ALGOLIA_QUERIES_URL,
@@ -383,7 +420,7 @@ class BilkaToGoClient:
                 "x-algolia-application-id": ALGOLIA_APP_ID,
                 "x-algolia-api-key": ALGOLIA_SEARCH_KEY,
             },
-            json={"requests": [{"indexName": ALGOLIA_PRODUCT_INDEX, "params": params}]},
+            json={"requests": [{"indexName": ALGOLIA_PRODUCT_INDEX, "params": urlencode(params)}]},
         )
         if response.status_code != 200:
             raise UnexpectedResponseError(f"Product search failed with HTTP {response.status_code}")
@@ -393,7 +430,7 @@ class BilkaToGoClient:
         except KeyError, TypeError, ValueError:
             raise UnexpectedResponseError("Product search answered without results") from None
         products = (Product.from_hit(hit, store_id) for hit in hits)
-        return sort_products([product for product in products if product is not None], sort)
+        return [product for product in products if product is not None]
 
     async def _shop(self, method: str, path: str, params: dict[str, Any]) -> dict[str, Any]:
         jwt = self._valid_jwt() or await self._restore_session() or await self._login()
@@ -419,7 +456,7 @@ class BilkaToGoClient:
         if response.status_code == 401:
             return None
         if response.status_code == 429 or response.status_code >= 500:
-            raise _ShopBusyError(f"{path} failed with HTTP {response.status_code}")
+            raise _ShopBusyError(f"{path} answered HTTP {response.status_code}")
         if response.status_code != 200:
             raise UnexpectedResponseError(f"{path} failed with HTTP {response.status_code}")
         return self._json(response, path)
@@ -482,6 +519,13 @@ class BilkaToGoClient:
         error_code = data.get("errorCode", 0)
         if error_code == GIGYA_INVALID_LOGIN_ID:
             raise InvalidCredentialsError(data.get("errorMessage", "Invalid email or password"))
+        if error_code == GIGYA_RATE_LIMIT or (
+            isinstance(error_code, int) and error_code >= GIGYA_SERVER_ERRORS
+        ):
+            message = data.get("errorMessage")
+            raise BilkaBusyError(
+                f"Gigya {method} answered {error_code}" + (f": {message}" if message else "")
+            )
         if error_code != 0 or response.status_code != 200:
             raise UnexpectedResponseError(
                 f"Gigya {method} failed: {data.get('errorMessage', error_code)}"

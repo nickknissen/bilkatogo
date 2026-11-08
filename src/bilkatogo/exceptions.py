@@ -10,6 +10,16 @@ class BilkaUnreachableError(BilkaToGoError):
     """Bilka could not be reached (connection error or timeout). Retry later."""
 
 
+class BilkaBusyError(BilkaToGoError):
+    """Bilka or its login service is temporarily unavailable (rate limit or server error).
+    Retry later; the credentials are not at fault."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(
+            f"Bilka or its login service is temporarily unavailable ({detail}); try again later"
+        )
+
+
 class UnknownPickupPointError(BilkaToGoError):
     """No Pickup Point has the given name."""
 

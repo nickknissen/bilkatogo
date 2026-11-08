@@ -9,6 +9,12 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
 
 ## Notes on real captures
 
+- `algolia_offers.json`: one hit, verbatim, from
+  [handle-mcp](https://github.com/NJohansen/handle-mcp)'s `tests/fixtures/bilkatogo/algolia_offers.json`
+  (live capture 2026-11-02, `isInOffer:1653`, a narrower `attributesToRetrieve` than ours). Bilka
+  writes "Se Her" as the `offerDescription` of a leaflet Offer without a text of its own. The hit
+  has no `isInAssortmentIn`, `isInOffer` or `inStockStore`, so a test that serves it adds them.
+
 - `cart_home.json`: a Home Delivery Cart, captured 2026-11-08 (#76) right after switching the
   website Cart to Home Delivery by typing in a zip code, before a full address was entered:
   `missing_hd_address` is `true`, `street` and `address` are empty, `dawa_uid` is `null` and

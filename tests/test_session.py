@@ -5,7 +5,12 @@ import httpx
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 
-from bilkatogo import BilkaToGoClient, BilkaUnreachableError, UnexpectedResponseError
+from bilkatogo import (
+    BilkaBusyError,
+    BilkaToGoClient,
+    BilkaUnreachableError,
+    UnexpectedResponseError,
+)
 from tests.conftest import MemoryTokenStorage
 from tests.fake_bilka import EMAIL, LOGGED_OUT, PASSWORD, FakeBilka, load_fixture
 
@@ -297,11 +302,10 @@ HTML_ERROR = "<html><body>Bad Gateway</body></html>"
     ("route", "response"),
     [
         ("order_history", httpx.Response(200, text=HTML_ERROR)),
-        ("order_history", httpx.Response(500, json={"error": "fake"})),
         ("order_history", httpx.Response(200, json=["not", "an", "object"])),
         ("gigya_login", httpx.Response(502, text=HTML_ERROR)),
         ("gigya_login", httpx.Response(200, json={"errorCode": 0})),
-        ("gigya_jwt", httpx.Response(500, json={"errorCode": 500001, "errorMessage": "fake"})),
+        ("gigya_login", httpx.Response(400, json={"errorCode": 400006, "errorMessage": "fake"})),
         ("gigya_jwt", httpx.Response(500, text="Internal Server Error")),
     ],
 )
@@ -315,4 +319,38 @@ async def test_unexpected_answers_raise_unexpected_response(
         BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
     ):
         with pytest.raises(UnexpectedResponseError):
+            await client.get_orders()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("route", "response"),
+    [
+        (
+            "gigya_login",
+            httpx.Response(403, json={"errorCode": 403048, "errorMessage": "Too many requests"}),
+        ),
+        ("gigya_login", httpx.Response(500, json={"errorCode": 500028, "errorMessage": "fake"})),
+        ("gigya_jwt", httpx.Response(500, json={"errorCode": 500001, "errorMessage": "fake"})),
+        ("order_history", httpx.Response(500, json={"error": "fake"})),
+        ("order_history", httpx.Response(429, text="Too Many Requests")),
+    ],
+    ids=[
+        "gigya_rate_limit",
+        "gigya_server_error",
+        "gigya_jwt_server_error",
+        "shop_500",
+        "shop_429",
+    ],
+)
+async def test_passing_outages_raise_bilka_busy(
+    bilka: FakeBilka, route: str, response: httpx.Response
+) -> None:
+    bilka.script(route, response)
+
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        with pytest.raises(BilkaBusyError, match="try again later"):
             await client.get_orders()

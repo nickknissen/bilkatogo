@@ -3,6 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 from .client import BilkaToGoClient
 from .const import REQUEST_TIMEOUT_SECONDS
 from .exceptions import (
+    BilkaBusyError,
     BilkaToGoError,
     BilkaUnreachableError,
     CartChangeRejectedError,
@@ -40,6 +41,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 __all__ = [
+    "BilkaBusyError",
     "BilkaToGoClient",
     "BilkaToGoError",
     "BilkaUnreachableError",

@@ -243,6 +243,11 @@ def test_orders_when_there_are_none(invoke, bilka: FakeBilka) -> None:
         ("gigya_login", httpx.ConnectError("fake: refused"), "Could not reach Bilka"),
         ("gigya_jwt", httpx.ReadTimeout("fake: timed out"), "Could not reach Bilka"),
         ("gigya_jwt", httpx.Response(503, text="<html>Down</html>"), "Bilka answered unexpectedly"),
+        (
+            "gigya_login",
+            httpx.Response(403, json={"errorCode": 403048, "errorMessage": "Too many requests"}),
+            "temporarily unavailable",
+        ),
     ],
 )
 def test_failures_print_a_clear_message_and_exit_non_zero(
@@ -512,6 +517,7 @@ def test_search_lists_products_with_price_stock_and_offer(invoke) -> None:
     assert header.split() == [
         "Article",
         "Product",
+        "Size",
         "Brand",
         "Price",
         "Unit",
@@ -521,6 +527,7 @@ def test_search_lists_products_with_price_stock_and_offer(invoke) -> None:
     ]
     rows = search_rows(result.output)
     assert list(rows) == ["19753", "128298", "18381", "140787", "169794"]
+    assert "u. tilsat sukker  1 kg " in rows["19753"]
     assert "Cheasy" in rows["19753"]
     assert "30.95 kr  30.95 kr/kg  In stock" in rows["19753"]
     assert rows["128298"].rstrip().endswith("Skarp pris: 25.00 kr")
@@ -640,7 +647,47 @@ def test_search_json(invoke) -> None:
             "limit_per_customer": None,
         },
         "multibuy_offer": None,
+        "ean": "5712876340580",
+        "size": "800 g",
+        "category": "Mejeri & køl > Mejeri > Yoghurt & syrnede mælkeprodukter > Skyr "
+        "> Skyr m. smag",
     }
+
+
+def test_products_prints_the_products_asked_for_in_order(invoke, bilka: FakeBilka) -> None:
+    result = invoke("products", "18381", "99999", "19753", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[0].split()[:3] == ["Article", "Product", "Size"]
+    rows = search_rows(result.output)
+    assert list(rows) == ["18381", "19753"]
+    assert rows["18381"].split()[:3] == ["18381", "Bananer", "1"]
+
+
+def test_products_at_a_pickup_point_as_json(invoke, bilka: FakeBilka) -> None:
+    result = invoke(
+        "products",
+        "140787",
+        "--pickup-point",
+        "Pickup Fredericia",
+        "--json",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+    )
+
+    assert result.exit_code == 0, result.output
+    [product] = json.loads(result.output)
+    assert (product["article_number"], product["store_id"]) == ("140787", "1662")
+    assert product["size"] == "200 g"
+
+
+def test_products_none_found(invoke) -> None:
+    result = invoke("products", "99999", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert result.output.strip() == "No products."
 
 
 def test_cart_prints_cart_lines_total_and_pickup_point(

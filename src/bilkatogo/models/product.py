@@ -29,6 +29,12 @@ class Product(BilkaDataClass):
     in_stock: bool
     offer: Offer | None
     multibuy_offer: str | None
+    ean: str | None
+    """The barcode number, Bilka's `gtin`."""
+    size: str | None
+    """How much one unit holds, as the website writes it, e.g. "500 g" or "1,5 l"."""
+    category: str | None
+    """Bilka's category path and product type, e.g. "Frugt & grønt > Frugt > Bananer"."""
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
@@ -42,7 +48,7 @@ class Product(BilkaDataClass):
         offer = None
         if label and not multibuy:
             offer = Offer(
-                label=label,
+                label=_offer_label(label),
                 price=kroner(store.get("price")),
                 unit_price=kroner(store.get("unitsOfMeasureOfferPrice")) if unit else None,
                 ends=_date(store.get("offerUntil")),
@@ -61,7 +67,47 @@ class Product(BilkaDataClass):
             in_stock=bool(store.get("inStock")),
             offer=offer,
             multibuy_offer=label if multibuy and label else None,
+            ean=hit.get("gtin") or None,
+            size=size_of(hit),
+            category=" > ".join(
+                part for part in (hit.get("deepestCategoryPath"), hit.get("productType")) if part
+            )
+            or None,
         )
+
+
+def size_of(product: dict[str, Any]) -> str | None:
+    """A Product's Size as the website writes it, e.g. "750 g" or "1,5 l", from Bilka's
+    `units` and `unitsOfMeasure`; None when either is missing."""
+    unit = product.get("unitsOfMeasure") or ""
+    try:
+        units = Decimal(str(product.get("units") or 0))
+    except ArithmeticError:
+        return None
+    if not unit or not units.is_finite() or units <= 0:
+        return None
+    return f"{units.normalize():f}".replace(".", ",") + f" {unit}"
+
+
+def _offer_label(label: str) -> str:
+    """Bilka's label for an Offer; "Se Her", its placeholder for a leaflet Offer without a text
+    of its own, becomes "Tilbud"."""
+    return "Tilbud" if label.strip().casefold() == "se her" else label
+
+
+def product_attributes(store_id: str) -> list[str]:
+    """The Algolia attributes `Product.from_hit` reads for a Store."""
+    return [
+        "name",
+        "brand",
+        "price",
+        "gtin",
+        "units",
+        "unitsOfMeasure",
+        "productType",
+        "deepestCategoryPath",
+        f"storeData.{store_id}",
+    ]
 
 
 class SearchSort(StrEnum):
