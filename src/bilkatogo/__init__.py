@@ -14,6 +14,7 @@ from .exceptions import (
     UnknownPickupPointError,
 )
 from .models import (
+    AvailablePickupSlot,
     Cart,
     CartChange,
     CartChanges,
@@ -29,8 +30,10 @@ from .models import (
     PickupCode,
     PickupPoint,
     PickupSlot,
+    PickupSlots,
     Product,
     SearchSort,
+    SlotAvailability,
     Substitution,
 )
 from .token_storage import FileTokenStorage, TokenStorage
@@ -41,6 +44,7 @@ except PackageNotFoundError:
     __version__ = "0.0.0"
 
 __all__ = [
+    "AvailablePickupSlot",
     "BilkaBusyError",
     "BilkaToGoClient",
     "BilkaToGoError",
@@ -65,9 +69,11 @@ __all__ = [
     "PickupCode",
     "PickupPoint",
     "PickupSlot",
+    "PickupSlots",
     "Product",
     "REQUEST_TIMEOUT_SECONDS",
     "SearchSort",
+    "SlotAvailability",
     "Substitution",
     "TokenStorage",
     "UnexpectedResponseError",

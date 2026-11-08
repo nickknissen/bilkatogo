@@ -1,7 +1,8 @@
 from datetime import timedelta
 
+import httpx
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.const import STATE_UNKNOWN
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.translation import async_get_translations
@@ -9,7 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry, async_
 
 from bilkatogo import OrderStatus
 from custom_components.bilkatogo.const import DOMAIN
-from tests.fake_bilka import FakeBilka
+from tests.fake_bilka import FakeBilka, load_fixture
 from tests.ha.conftest import SetupIntegration
 
 
@@ -214,3 +215,115 @@ async def test_pickup_sensor_names_are_translated_in_danish_and_english(
     assert en[f"{prefix}pickup_slot.name"] == "Pickup slot"
     assert en[f"{prefix}pickup_code.name"] == "Pickup code"
     assert en[f"{prefix}pickup_point.name"] == "Pickup point"
+
+
+# When the pickup capture was taken, and the Home Delivery one (handle-mcp).
+PICKUP_CAPTURED = "2026-11-08T20:00:00+01:00"
+HOME_CAPTURED = "2026-11-02T08:00:00+01:00"
+
+
+async def test_next_pickup_slot_is_the_earliest_open_slot_at_the_carts_pickup_point(
+    hass: HomeAssistant, setup_integration: SetupIntegration, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+
+    entry = await setup_integration()
+
+    state = sensor_state(hass, entry, "next_pickup_slot")
+    # Monday 08:00 is sold out.
+    assert state.state == "2026-11-09T09:00:00+00:00"
+    assert state.attributes["device_class"] == "timestamp"
+    assert {
+        key: state.attributes[key]
+        for key in ("end", "availability", "order_before", "pickup_point", "open_slots")
+    } == {
+        "end": "2026-11-09T12:00:00+01:00",
+        "availability": "open",
+        "order_before": "i morgen kl. 6:00",
+        "pickup_point": "Bilka Waves, Hundige",
+        "open_slots": 11,
+    }
+    assert state.attributes["note"].startswith("For at benytte det valgte tidsrum")
+
+
+async def test_next_pickup_slot_for_home_delivery_has_no_pickup_point(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    home_delivery_cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(HOME_CAPTURED)
+
+    entry = await setup_integration()
+
+    state = sensor_state(hass, entry, "next_pickup_slot")
+    assert state.state == "2026-11-03T23:00:00+00:00"
+    assert state.attributes["end"] == "2026-11-04T06:00:00+01:00"
+    assert state.attributes["open_slots"] == 1
+    assert "pickup_point" not in state.attributes
+    for value in state.attributes.values():
+        assert "Eksempel" not in str(value)
+
+
+async def test_next_pickup_slot_is_unknown_without_an_open_slot(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    bilka: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    answer = load_fixture("available_delivery_dates_pickup.json")
+    for day in answer["availableIntervals"]:
+        for interval in day.get("intervals") or []:
+            interval.update(availability_bit=4, closed=1, closed_text="udsolgt")
+    bilka.script("available_delivery_dates", answer)
+
+    entry = await setup_integration()
+
+    state = sensor_state(hass, entry, "next_pickup_slot")
+    assert state.state == STATE_UNKNOWN
+    assert state.attributes["open_slots"] == 0
+    assert "end" not in state.attributes
+
+
+async def test_next_pickup_slot_is_unavailable_when_bilka_fails_it_alone(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    bilka: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    bilka.script("available_delivery_dates", httpx.Response(500, text="oops"))
+
+    entry = await setup_integration()
+
+    assert sensor_state(hass, entry, "next_pickup_slot").state == STATE_UNAVAILABLE
+    assert sensor_state(hass, entry, "order_status").state == "received"
+    assert sensor_state(hass, entry, "pickup_point").state == "Bilka Eksempelby"
+
+    freezer.tick(timedelta(minutes=60))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert sensor_state(hass, entry, "next_pickup_slot").state == "2026-11-09T09:00:00+00:00"
+
+
+async def test_next_pickup_slot_is_translated_in_danish_and_english(
+    hass: HomeAssistant, setup_integration: SetupIntegration
+) -> None:
+    await setup_integration()
+    prefix = f"component.{DOMAIN}.entity.sensor.next_pickup_slot."
+
+    da = await async_get_translations(hass, "da", "entity", [DOMAIN])
+    en = await async_get_translations(hass, "en", "entity", [DOMAIN])
+
+    assert da[f"{prefix}name"] == "Næste ledige afhentningstidspunkt"
+    assert en[f"{prefix}name"] == "Next available pickup slot"
+    attributes = {"end", "availability", "order_before", "note", "pickup_point", "open_slots"}
+    for translations in (da, en):
+        named = {
+            key.removeprefix(f"{prefix}state_attributes.").removesuffix(".name")
+            for key in translations
+            if key.startswith(f"{prefix}state_attributes.") and key.endswith(".name")
+        }
+        assert named == attributes

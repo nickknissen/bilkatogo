@@ -20,6 +20,8 @@ bilkatogo orders --limit 10     # list your most recent orders
 bilkatogo order                 # show the Current Order with its details
 bilkatogo order 900000000001    # show one order by Order Number
 bilkatogo pickup-points         # list Pickup Points and their Store, * marks your Cart's
+bilkatogo pickup-slots          # the next 7 days' Pickup Slots for your Cart: open, closed or sold out
+bilkatogo pickup-slots --days 3 # today and the next 2 days
 bilkatogo search skyr           # Products with Article Number, Size, Price, stock and Offer at your Cart's Store
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
 bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
@@ -39,6 +41,12 @@ message and exit 1. `cart add-items` prints a line per Product with its result, 
 and exits 1 when any Product was rejected or skipped. There is no command to empty the Cart.
 Logging in on the website or in the app afterwards can undo these changes (see the
 [library documentation](library.md)).
+
+`pickup-slots` shows the Pickup Slots for whatever your Cart has, its Pickup Point or Home
+Delivery, in a table of Date, Start, End, Availability (Open, Closed once its order deadline
+has passed, Sold out), Order before (Bilka's deadline) and Note, with a "No slots" row for a
+day Bilka offers none. It ends with the next open slot, or "No open Pickup Slots in the next N
+days.". It never chooses a slot: do that on bilkatogo.dk. With `--json` it adds `next_open`.
 
 Every command accepts `--json` for machine-readable output.
 
@@ -61,7 +69,7 @@ is finished, the most recently finished one.
 ## Capturing a fixture
 
 When an Order or the Cart shows something the CLI gets wrong, such as a Missing Item or a
-Discount, `--raw` on `order` and `cart` prints Bilka's JSON as received, so it can become a test
+Discount, `--raw` on `order`, `cart` and `pickup-slots` prints Bilka's JSON as received, so it can become a test
 fixture. Add `--redact` to replace your personal data with placeholders before sharing it:
 name, email, address, phone, Pickup Code, Order Number (`9000000000xx`) and the customer ids
 `uid` and `tid`. Pickup Points are public and stay.
@@ -69,6 +77,7 @@ name, email, address, phone, Pickup Code, Order Number (`9000000000xx`) and the 
 ```sh
 bilkatogo order 900000000001 --raw --redact > order_details_missing.json
 bilkatogo cart --raw --redact > cart.json
+bilkatogo pickup-slots --raw --redact > available_delivery_dates_pickup.json
 ```
 
 Read the file and search it for your name, email and address before attaching it to an

@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, parse_qsl
 
 import httpx
 
-from bilkatogo.models.cart import FEE_GROUPS
+from bilkatogo.models.cart import FEE_GROUPS, is_home_delivery
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -40,6 +40,10 @@ ROUTES: dict[tuple[str, str], str] = {
         "https://api.bilkatogo.dk/api/shop/v6/AvailableDeliveryAddresses",
     ): "available_delivery_addresses",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/Cart"): "cart",
+    (
+        "GET",
+        "https://api.bilkatogo.dk/api/shop/v3/AvailableDeliveryDates",
+    ): "available_delivery_dates",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/ChangeLineCount"): "change_line_count",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/EmptyCart"): "empty_cart",
     ("POST", "https://f9vbjlr1bk-dsn.algolia.net/1/indexes/*/queries"): "algolia",
@@ -198,6 +202,14 @@ class FakeBilka:
         if not self.has_shop_session(request):
             return httpx.Response(200, json=load_fixture("cart.json"))
         return httpx.Response(200, json={**self.cart_contents, "uid": UID})
+
+    def available_delivery_dates(self, request: httpx.Request) -> httpx.Response:
+        """The Pickup Slots for whatever the Cart has: its Pickup Point or Home Delivery."""
+        home = is_home_delivery(self.cart_contents.get("deliveryAddress"))
+        answer = load_fixture(f"available_delivery_dates_{'home' if home else 'pickup'}.json")
+        # Bilka's logged-out answer was not captured; a guest answer with `uid: -1` like Cart's.
+        uid = UID if self.has_shop_session(request) else -1
+        return httpx.Response(200, json={**answer, "uid": uid})
 
     def change_line_count(self, request: httpx.Request) -> httpx.Response:
         # Bilka's answer to a logged-out change was not captured.

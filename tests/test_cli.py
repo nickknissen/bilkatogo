@@ -1094,3 +1094,85 @@ def test_piped_errors_are_utf8(run_piped) -> None:
     _, stderr = run_piped("search", "skyr", "--limit", "smør")
 
     assert "smør".encode() in stderr
+
+
+PICKUP_CAPTURED = "2026-11-08T20:00:00+01:00"
+HOME_CAPTURED = "2026-11-02T08:00:00+01:00"
+
+
+def test_pickup_slots_prints_a_table_and_the_next_open_slot(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    # What the Cart held when the slots were captured.
+    logged_in_cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-11")
+
+    result = invoke("pickup-slots", "--days", "2", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[:2] == [
+        "Pickup Point  Bilka Vejle",
+        "Chosen        Wed 11/11 14:00-16:00",
+    ]
+    assert lines[2].split() == ["Date", "Start", "End", "Availability", "Order", "before", "Note"]
+    assert lines[3].split() == ["Sun", "08/11", "No", "slots"]
+    assert lines[4].split()[:9] == [
+        "Mon",
+        "09/11",
+        "08:00",
+        "10:00",
+        "Sold",
+        "out",
+        "i",
+        "morgen",
+        "kl.",
+    ]
+    assert lines[4].rstrip().endswith("bemærk at tidspunktet kan blive fuldt booket forinden.")
+    assert lines[5].split()[:5] == ["Mon", "09/11", "10:00", "12:00", "Open"]
+    assert len(lines) == 3 + 1 + 6 + 1
+    assert lines[-1] == "Next open: Mon 09/11 10:00-12:00"
+
+
+def test_pickup_slots_for_home_delivery_without_open_slots(
+    invoke, home_delivery_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(HOME_CAPTURED)
+
+    result = invoke("pickup-slots", "--days", "2", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "Pickup Point  Home Delivery"
+    assert [line.split()[:5] for line in lines[3:5]] == [
+        ["Mon", "02/11", "00:00", "06:00", "Closed"],
+        ["Tue", "03/11", "No", "slots", "udsolgt"],
+    ]
+    assert lines[-1] == "No open Pickup Slots in the next 2 days."
+    for personal in ("Kunde Eksempel", "Eksempelby"):
+        assert personal not in result.output
+
+
+def test_pickup_slots_json(
+    invoke, home_delivery_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(HOME_CAPTURED)
+
+    result = invoke("pickup-slots", "--json", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    slots = json.loads(result.output)
+    assert slots["slots"][1] == {
+        "slot": {"date": "2026-11-04", "start": "00:00:00", "end": "06:00:00"},
+        "availability": "open",
+        "order_before": "i morgen kl. 15:00",
+        "note": (
+            "Levering vil ske natten til onsdag. Vi kommer med dine varer imellem 20:00 og 06:00. "
+            "For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 15:00, "
+            "bemærk at tidspunktet kan blive fuldt booket forinden."
+        ),
+    }
+    assert slots["days_without_slots"] == {"2026-11-03": "udsolgt"}
+    assert slots["next_open"] == slots["slots"][1]
+    assert slots["chosen"] == {"date": "2026-11-11", "start": "15:00:00", "end": "22:00:00"}
+    assert (slots["pickup_point"], slots["home_delivery"]) == (None, True)

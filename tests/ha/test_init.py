@@ -89,6 +89,7 @@ async def test_entities_are_keyed_on_the_account(
             "pickup_code",
             "substitutions",
             "missing_items",
+            "next_pickup_slot",
             "ready_for_pickup",
             "pickup_slots",
             "substitution",

@@ -9,6 +9,25 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
 
 ## Notes on real captures
 
+- `available_delivery_dates_pickup.json`: `GET shop/v3/AvailableDeliveryDates` through the
+  library's session on Sunday 2026-11-08 at about 20:00, the Cart at Bilka Vejle with the slot
+  Wed 11/11 14:00-16:00 chosen (#73). Redacted with `redact` and trimmed to Sun 8 to Tue 10.
+  `availability_bit` seen: 0 on Sunday (today, no intervals, `closed_text` empty; the past
+  days and the next Sunday were the same), 5 on Monday, whose 08:00-10:00 is 4, `closed: 1`,
+  `closed_text: "udsolgt"` and the rest 1 with `closed: 0`, and 1 on Tuesday with every
+  interval 1. No bit 2: the first slot was the next morning. `eid` is -1, not a personal id.
+  Each interval's `info` is only the order deadline sentence. The website was not looked at
+  during the capture.
+
+- `available_delivery_dates_home.json`: the Home Delivery answer from
+  [handle-mcp](https://github.com/NJohansen/handle-mcp)'s
+  `tests/fixtures/bilkatogo/available_delivery_dates.json` (live capture 2026-11-02, trimmed to
+  three days there), with its `"X"` ids replaced by our `uid` and `tid` placeholders and `eid`
+  -1. Mon is closed past its deadline (day and interval bit 2, `closed: 1`), Tue sold out
+  (`closed_text` "udsolgt", no intervals), Wed open; one night slot, 00:00-06:00, a day. It
+  has `intervalStart`/`intervalEnd` but `deliveryDate: null`, and a `msg`. To be replaced by
+  the maintainer's own Home Delivery capture.
+
 - `algolia_offers.json`: one hit, verbatim, from
   [handle-mcp](https://github.com/NJohansen/handle-mcp)'s `tests/fixtures/bilkatogo/algolia_offers.json`
   (live capture 2026-11-02, `isInOffer:1653`, a narrower `attributesToRetrieve` than ours). Bilka

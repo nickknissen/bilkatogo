@@ -55,7 +55,50 @@ def test_order_raw_without_a_number_and_no_orders(invoke, bilka: FakeBilka) -> N
     assert result.output.strip() == "null"
 
 
-@pytest.mark.parametrize("command", [["cart"], ["order"], ["order", "900000000004"]])
+def test_pickup_slots_raw_prints_bilkas_json_as_received(invoke, logged_in_cart: FakeBilka) -> None:
+    result = invoke("pickup-slots", "--raw")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == load_fixture("available_delivery_dates_pickup.json")
+    assert logged_in_cart.calls("cart") == []
+
+
+def test_redacted_pickup_slots_capture_replaces_the_customer_ids(
+    invoke, logged_in_cart: FakeBilka
+) -> None:
+    answer = load_fixture("available_delivery_dates_pickup.json")
+    logged_in_cart.script(
+        "available_delivery_dates",
+        {**answer, "uid": 4817263, "tid": "c0ffee00-1234-4abc-9def-0123456789ab"},
+    )
+
+    result = invoke("pickup-slots", "--raw", "--redact")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == answer
+
+
+@pytest.mark.parametrize(
+    ("cart", "capture"),
+    [
+        ("logged_in_cart", "available_delivery_dates_pickup.json"),
+        ("home_delivery_cart", "available_delivery_dates_home.json"),
+    ],
+)
+def test_pickup_slots_fixtures_are_already_redacted(
+    invoke, request: pytest.FixtureRequest, cart: str, capture: str
+) -> None:
+    request.getfixturevalue(cart)
+
+    result = invoke("pickup-slots", "--raw", "--redact")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == load_fixture(capture)
+
+
+@pytest.mark.parametrize(
+    "command", [["cart"], ["order"], ["order", "900000000004"], ["pickup-slots"]]
+)
 def test_redact_without_raw_is_an_error(invoke, bilka: FakeBilka, command: list[str]) -> None:
     result = invoke(*command, "--redact")
 

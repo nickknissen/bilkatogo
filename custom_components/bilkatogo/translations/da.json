@@ -178,6 +178,29 @@
       },
       "pickup_point": {
         "name": "Afhentningssted"
+      },
+      "next_pickup_slot": {
+        "name": "Næste ledige afhentningstidspunkt",
+        "state_attributes": {
+          "end": {
+            "name": "Slutter"
+          },
+          "availability": {
+            "name": "Ledighed"
+          },
+          "order_before": {
+            "name": "Bestil senest"
+          },
+          "note": {
+            "name": "Bemærkning"
+          },
+          "pickup_point": {
+            "name": "Afhentningssted"
+          },
+          "open_slots": {
+            "name": "Ledige tidspunkter"
+          }
+        }
       }
     }
   },
