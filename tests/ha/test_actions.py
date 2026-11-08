@@ -282,26 +282,33 @@ async def test_get_cart_returns_the_cart_without_changing_it(
 
 
 async def test_get_cart_for_home_delivery_leaves_out_the_address(
-    hass: HomeAssistant, setup_integration: SetupIntegration, home_delivery_cart: FakeBilka
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    home_delivery_cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
 ) -> None:
+    freezer.move_to("2026-11-08T12:00:00+01:00")
     await setup_integration()
 
     response = await call(hass, "get_cart", {})
 
     assert {key: value for key, value in response.items() if key != "lines"} == {
-        "total": 127.0,
+        "total": 101.4,
         "deposit": 0.0,
         "service_fee": 39.0,
         "packaging": 0.0,
-        "discount": 9.5,
+        "discount": 0.0,
         "delivery_fee": 39.0,
         "home_delivery": True,
         "pickup_point": None,
-        "pickup_slot": None,
+        "pickup_slot": {
+            "starts_at": "2026-11-11T15:00:00+01:00",
+            "ends_at": "2026-11-11T22:00:00+01:00",
+        },
         "minimum_order": 500.0,
-        "minimum_left": 373.0,
-        "next_available_date": "2026-11-03",
-        "warnings": ["373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
+        "minimum_left": 398.6,
+        "next_available_date": "2026-11-09",
+        "warnings": ["398,60 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
     }
     for personal in ("Kunde Eksempel", "Testvej", "Eksempelby", "9999"):
         assert personal not in str(response)

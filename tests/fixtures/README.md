@@ -6,14 +6,18 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
 
 - `order_details_missing.json`: a Missing Item with the invented field `unavailable_quantity`.
   To be replaced by a real capture (#27).
-- `cart_home.json`: a Home Delivery Cart. No real capture exists yet, so it is
-  `cart_logged_in.json` with the fields a Home Delivery Cart carries according to
-  [handle-mcp](https://github.com/NJohansen/handle-mcp)'s hand-edited `cart_home.json`:
-  `deliveryAddress.dawa_uid`, `recipient_name`, the home address, `minimum_buy` (50000),
-  `nextAvailableDeliveryDate`, `hd_available` (`true`), and `stat.delivery_price` (3900),
-  `minimum_left` (37300) and `minimum_left_text`. To be replaced by a real capture (#76).
 
-  `deliveryAddress.hd_available` is `false` in both real pickup captures and `true` here; the
-  top-level `hd_available` is `true` in both pickup captures, so it does not tell the modes
-  apart. The library does not depend on either until a real Home Delivery capture shows what
-  they mean.
+## Notes on real captures
+
+- `cart_home.json`: a Home Delivery Cart, captured 2026-11-08 (#76) right after switching the
+  website Cart to Home Delivery by typing in a zip code, before a full address was entered:
+  `missing_hd_address` is `true`, `street` and `address` are empty, `dawa_uid` is `null` and
+  the zip code is in `temporary_zipcode`. `recipient_name` is what marks it as Home Delivery.
+  `name` named another member of the household than `recipient_name`. `facility` is 8 (3 on
+  both pickup captures). Bilka adds the Delivery Fee as a "Leveringsgebyr" line in the
+  "Services" group, which is not a Cart Line.
+
+  `deliveryAddress.hd_available` is `true` here and `false` in both pickup captures
+  (`cart.json`, `cart_logged_in.json`); the top-level `hd_available` is `true` in all three, so
+  it does not tell the modes apart. The library does not depend on either until a second Home
+  Delivery capture, with a full address, confirms what they mean.

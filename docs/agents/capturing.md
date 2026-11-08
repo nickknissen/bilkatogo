@@ -40,6 +40,8 @@ Found on 2026-11-02:
 
 Replace before committing: name, email, address, phone, Pickup Code, real Order Numbers (use `9000000000xx`), and the customer ids `uid` (use `900001`) and `tid` (use `00000000-0000-0000-0000-000000000000`). Pickup Points and Stores are public and stay. Grep the result for the maintainer's name and email before committing.
 
+`redact` keys off fields it knows, so a capture of a new shape can carry personal data it misses. The first Home Delivery Cart (#76) had another household member's name in `deliveryAddress.name`, unlike `recipient_name`, and the typed-in zip code in `temporary_zipcode`; `redact` now replaces both in a home address. Write a capture outside the repo first, list every field of the parts that changed (`deliveryAddress`, `customer`, free text) and grep for the names of everyone in the household before copying it into `tests/fixtures/`.
+
 ## Finding a Product with a limit per customer
 
 Query Algolia (constants in `src/bilkatogo/const.py`) with `isInAssortmentIn:<sid> AND nonsearchable:false` and check `storeData[<sid>].offerMax > 0`. Algolia returns at most 1,000 hits per query, so an empty result over the whole assortment is not proof; split the query by category or text.
