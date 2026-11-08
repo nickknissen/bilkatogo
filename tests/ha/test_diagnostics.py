@@ -28,6 +28,7 @@ PERSONAL_DATA = {
     "fake-uid-0001",
     "fake-tid-0001",
     "eyFake.jwt.token",
+    "st2.fake-login-token",
 }
 
 

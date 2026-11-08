@@ -50,11 +50,13 @@ async def test_stored_session_is_used_without_a_password(
 
 
 @pytest.mark.asyncio
-async def test_expired_stored_session_logs_in_again(
+async def test_expired_session_saved_before_login_tokens_logs_in_again(
     bilka: FakeBilka, storage: MemoryTokenStorage
 ) -> None:
     await log_in(bilka, storage)
     assert storage.data is not None
+    # A session saved before version 2: no version, no login token.
+    del storage.data["version"], storage.data["login_token"]
     storage.data["jwt_expires_at"] = "2020-01-01T00:00:00+00:00"
 
     async with (
@@ -65,6 +67,7 @@ async def test_expired_stored_session_logs_in_again(
 
     assert len(bilka.calls("gigya_login")) == 2
     assert storage.data["jwt_expires_at"] != "2020-01-01T00:00:00+00:00"
+    assert storage.data["login_token"]
 
 
 @pytest.mark.asyncio

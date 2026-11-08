@@ -220,6 +220,41 @@ def test_orders_without_a_session_prompts_for_the_password(
     assert (config_dir / "session.json").exists()
 
 
+def expire_session(config_dir: Path, *, keep_login_token: bool) -> None:
+    path = config_dir / "session.json"
+    session = json.loads(path.read_text(encoding="utf-8"))
+    session["jwt_expires_at"] = "2020-01-01T00:00:00+00:00"
+    if not keep_login_token:
+        del session["login_token"]
+    path.write_text(json.dumps(session), encoding="utf-8")
+
+
+def test_an_expired_session_is_renewed_without_asking_for_the_password(
+    invoke, bilka: FakeBilka, config_dir: Path
+) -> None:
+    invoke("login", "--email", EMAIL, "--password", PASSWORD)
+    expire_session(config_dir, keep_login_token=True)
+
+    result = invoke("orders")
+
+    assert result.exit_code == 0, result.output
+    assert "Password" not in result.output
+    assert len(bilka.calls("gigya_login")) == 1
+    assert len(bilka.calls("gigya_jwt")) == 2
+
+
+def test_a_dead_session_names_the_login_command(invoke, bilka: FakeBilka, config_dir: Path) -> None:
+    invoke("login", "--email", EMAIL, "--password", PASSWORD)
+    expire_session(config_dir, keep_login_token=False)
+
+    result = invoke("orders", input=f"{PASSWORD}\n")
+
+    assert result.exit_code == 1
+    assert "Password" not in result.output
+    assert "Session expired. Run `bilkatogo login`." in result.output
+    assert len(bilka.calls("gigya_login")) == 1
+
+
 def test_orders_with_a_wrong_password_fails_clearly(invoke) -> None:
     result = invoke("orders", "--email", EMAIL, "--password", "forkert")
 

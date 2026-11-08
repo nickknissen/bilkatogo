@@ -7,3 +7,14 @@ Bilka offers no customer API (the Salling Group developer portal only exposes st
 - The API is undocumented and can change without notice; parsing must tolerate unknown fields and status codes.
 - Automated access may conflict with Bilka's terms; the user accepted this risk.
 - Polling is kept adaptive and low-frequency so the traffic looks like a person checking their order.
+
+## 2026-11-08: the session holds Gigya's login token (#74)
+
+The saved session now also holds the login token (`sessionInfo.cookieValue`) from `accounts.login`, alongside the JWT, as session format version 2. When the JWT runs out the client asks `accounts.getJWT` for a new one with that token, before falling back to the password. So a password is needed to log in once, not every 24 hours: the CLI and a future MCP server (#63) can run on the saved session alone. This is not the pasted token rejected above: the client gets it from its own login and still renews on its own.
+
+The password is still accepted, and it is still the only way back when Gigya refuses the token (an `errorCode` on `getJWT`): the client drops the token and logs in with the password, or, without one, raises `InvalidCredentialsError` asking for a new login. A busy or unreachable Gigya leaves the token in place. When the shop rejects a JWT the client logs in with the password, not with the token. Home Assistant keeps the password in its config entry, so for its users nothing changes.
+
+The token's lifetime is not documented for this site. handle-mcp has renewed from it since 2026-11-05 (its ADR 0003). Observed here: to be recorded after day 2 and day 8 of a session started with `bilkatogo login`.
+
+- The session file now works like the password for as long as the token lives; it stays readable only by the user (0600, not on Windows) and the Home Assistant store is private.
+- Sessions saved before version 2 keep working until their JWT runs out, then need the password once: the CLI asks for `bilkatogo login` instead of prompting, the same as for any session it can no longer renew. A session saved in a newer format than the client knows is not used.

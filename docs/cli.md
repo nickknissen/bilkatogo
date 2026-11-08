@@ -61,7 +61,13 @@ Credentials are looked up in this order:
 4. an interactive prompt
 
 The session is stored as `session.json` in the same directory, so later commands don't log in
-again.
+again. It renews itself without the password for days, as long as Bilka's login service
+accepts it, so after `bilkatogo login` the password need not be in `config.json` or the
+environment. When it can no longer be renewed, commands without a password fail with
+"Session expired. Run `bilkatogo login`." With a password from the options, the environment
+or `config.json`, they log in again on their own. `session.json` lets anyone read and change
+your Cart, so keep it as private as the password; it is readable only by you on Linux and
+macOS.
 
 The Current Order is the unfinished order with the earliest pickup slot or, when every order
 is finished, the most recently finished one.

@@ -181,9 +181,9 @@ async def with_session[T](
 ) -> T:
     storage = FileTokenStorage(config.session_file())
     email, password = known_credentials(email, password)
+    saved_email = ((await storage.load()) or {}).get("email")
     if email is None:
-        session = await storage.load()
-        email = (session or {}).get("email") or typer.prompt("Email")
+        email = saved_email or typer.prompt("Email")
     http = http_client(ctx)
     try:
         try:
@@ -194,6 +194,10 @@ async def with_session[T](
         except InvalidCredentialsError:
             if password is not None:
                 raise
+            has_saved_session = email == saved_email
+            if has_saved_session:
+                # It can no longer be renewed without the password.
+                raise fail("Session expired. Run `bilkatogo login`.") from None
             async with BilkaToGoClient(
                 email, prompt_password(), token_storage=storage, httpx_client=http
             ) as client:
