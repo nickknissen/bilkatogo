@@ -91,6 +91,20 @@ An Order that is brought to the customer's address instead of collected at a Pic
 The smallest Cart total Bilka accepts for Home Delivery; `minimum_buy`. Pickup has none in every capture.
 _Avoid_: Minimum buy, minimumskøb (use only as the Danish alias)
 
+### Recipes
+
+**Recipe**:
+A dish with its ingredients and method on bilkatogo.dk under /inspiration/opskrifter/, identified by its path there, e.g. `aftensmad/danske-retter/karbonader`. The page's Magnolia components (ADR 0007).
+_Avoid_: Opskrift (use only as the Danish alias), meal
+
+**Madplan**:
+Bilka's weekly plan of seven dinners, one per weekday, at /inspiration/opskrifter/madplaner.
+_Avoid_: Meal plan, weekly menu
+
+**Recipe Products**:
+The Products Bilka lists under "Det skal du bruge" for a Recipe, one pack each, without amounts; `curatedSkuList`.
+_Avoid_: Ingredients (those are the Recipe's text), shopping list
+
 ### Order Status
 
 **Order Status**:

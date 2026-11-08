@@ -6,7 +6,7 @@ import sys
 from collections.abc import Awaitable, Callable, Coroutine
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import httpx
 import typer
@@ -23,6 +23,7 @@ from .exceptions import (
 from .models import (
     BilkaDataClass,
     Cart,
+    CartChanges,
     CartChangeStatus,
     Offer,
     Order,
@@ -31,10 +32,14 @@ from .models import (
     PickupPoint,
     PickupSlot,
     Product,
+    RecipeDetails,
     SearchSort,
 )
 from .redact import redact as redact_personal_data
 from .token_storage import FileTokenStorage
+
+if TYPE_CHECKING:
+    from .recipes import RecipeReader
 
 app = typer.Typer(no_args_is_help=True, help="Track your BilkaToGo orders.")
 
@@ -665,6 +670,11 @@ async def cart_add_items(
         "the cart",
         action="Could not change",
     )
+    print_changes(result, as_json)
+
+
+def print_changes(result: CartChanges, as_json: bool) -> None:
+    """A line per Product with its result, then the Cart; exits 1 when any was not added."""
     if as_json:
         typer.echo(to_json(result))
     else:
@@ -797,6 +807,164 @@ def print_cart(found: Cart) -> None:
         typer.echo(f"{label:<14} {value}")
     for warning in found.warnings:
         typer.echo(f"Warning from Bilka: {warning}")
+
+
+recipes_app = typer.Typer(help="Bilka's Recipes and this week's Madplan from bilkatogo.dk.")
+app.add_typer(recipes_app, name="recipes")
+
+RecipeArgument = Annotated[
+    str,
+    typer.Argument(
+        help="The Recipe's link or path, e.g. aftensmad/danske-retter/karbonader.",
+    ),
+]
+
+
+async def read_recipes[T](
+    ctx: typer.Context, read: Callable[[RecipeReader], Awaitable[T]], what: str
+) -> T:
+    """Read public recipe pages, without logging in."""
+    from .recipes import RecipeReader
+
+    http = http_client(ctx)
+    try:
+        async with RecipeReader(httpx_client=http) as reader:
+            return await read(reader)
+    except BilkaToGoError as err:
+        raise failure(f"Could not fetch {what}", err) from None
+    finally:
+        if http is not None:
+            await http.aclose()
+
+
+@recipes_app.callback(invoke_without_command=True)
+@run_async
+async def recipes(ctx: typer.Context, as_json: JsonOption = False) -> None:
+    """Show this week's Madplan: seven dinners, Monday to Sunday."""
+    if ctx.invoked_subcommand is not None:
+        if as_json:
+            raise fail(f"Put --json after the subcommand: recipes {ctx.invoked_subcommand} --json.")
+        return
+    week = await read_recipes(ctx, lambda reader: reader.madplan(), "the Madplan")
+    if as_json:
+        typer.echo(to_json(week))
+        return
+    if week[0].group:
+        typer.echo(week[0].group)
+    # The website lists the Madplan's seven dinners from Monday to Sunday.
+    days = WEEKDAYS if len(week) == len(WEEKDAYS) else [""] * len(week)
+    print_table(
+        ["Day", "Recipe", "Path"],
+        [[day, recipe.name, recipe.id] for day, recipe in zip(days, week, strict=True)],
+    )
+
+
+@recipes_app.command("list")
+@run_async
+async def recipes_list(
+    ctx: typer.Context,
+    category: Annotated[
+        str, typer.Argument(help="A category's name or path, e.g. aftensmad or 'børn i køkkenet'.")
+    ],
+    limit: Annotated[int, typer.Option("--limit", min=1, help="Number of Recipes to show.")] = 20,
+    as_json: JsonOption = False,
+) -> None:
+    """Show the Recipes in a category; one from each sub-category in turn."""
+    found = await read_recipes(
+        ctx, lambda reader: reader.category(category, limit=limit), "the recipes"
+    )
+    if as_json:
+        typer.echo(to_json(found))
+    elif not found:
+        typer.echo("No recipes.")
+    else:
+        print_table(
+            ["Recipe", "Group", "Path"],
+            [[recipe.name, recipe.group or "", recipe.id] for recipe in found],
+        )
+
+
+@recipes_app.command("show")
+@run_async
+async def recipes_show(
+    ctx: typer.Context,
+    recipe: RecipeArgument,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Show a Recipe and its Recipe Products with Price and stock at your Cart's Store."""
+    details = await with_session(
+        ctx, email, password, lambda client: client.get_recipe(recipe), "the recipe"
+    )
+    if as_json:
+        typer.echo(to_json(details))
+        return
+    print_recipe(details)
+
+
+@recipes_app.command("add")
+@run_async
+async def recipes_add(
+    ctx: typer.Context,
+    recipe: RecipeArgument,
+    yes: Annotated[bool, typer.Option("--yes", help="Add without asking.")] = False,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Add one of each of a Recipe's Products your Store sells to your Cart, after asking."""
+    if as_json and not yes:
+        raise fail("--json needs --yes: recipes add asks before it changes the Cart.")
+    details = await with_session(
+        ctx, email, password, lambda client: client.get_recipe(recipe), "the recipe"
+    )
+    if not details.products:
+        raise fail(f"Your Store sells none of the Products for {details.name}.")
+    if not as_json:
+        print_recipe_products(details)
+        if not yes and not typer.confirm(
+            f"Add {len(details.products)} Products to the Cart?", default=False
+        ):
+            typer.echo("Nothing added.")
+            return
+    items = {product.article_number: 1 for product in details.products}
+    result = await with_session(
+        ctx,
+        email,
+        password,
+        lambda client: client.add_items_to_cart(items),
+        "the cart",
+        action="Could not change",
+    )
+    print_changes(result, as_json)
+
+
+def print_recipe(details: RecipeDetails) -> None:
+    fields = [
+        ("Recipe", details.name),
+        ("Link", details.url),
+        ("Persons", str(details.persons) if details.persons else ""),
+        ("Time", details.time or ""),
+    ]
+    for label, value in fields:
+        typer.echo(f"{label:<8} {value}")
+    print_list("Ingredients", details.ingredients)
+    for section in details.method:
+        print_list(section.title or "Method", section.steps)
+    typer.echo()
+    print_recipe_products(details)
+
+
+def print_recipe_products(details: RecipeDetails) -> None:
+    if details.products:
+        print_products(details.products, as_json=False)
+    else:
+        typer.echo("Your Store sells none of the Products.")
+    sold = {product.article_number for product in details.products}
+    missing = [number for number in details.article_numbers if number not in sold]
+    if missing:
+        typer.echo(f"Not sold at your Store: {', '.join(missing)}")
 
 
 def main() -> None:
