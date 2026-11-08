@@ -85,7 +85,7 @@ class Cart(BilkaDataClass):
             minimum_order=kroner(address.get("minimum_buy")) or None,
             minimum_left=kroner(stat.get("minimum_left")),
             next_available_date=_date(address.get("nextAvailableDeliveryDate")),
-            pickup_slot=upcoming_cart_slot(data.get("deliveryDate")),
+            pickup_slot=_upcoming_slot(data.get("deliveryDate")),
             warnings=_cart_warnings(data, stat),
         )
 
@@ -102,9 +102,7 @@ def _cart_warnings(data: dict[str, Any], stat: dict[str, Any]) -> list[str]:
     return warnings
 
 
-def upcoming_cart_slot(data: dict[str, Any] | None) -> PickupSlot | None:
-    """The Pickup Slot chosen in the Cart from `deliveryDate`, `intervalStart` and
-    `intervalEnd`, while it lies ahead."""
+def _upcoming_slot(data: dict[str, Any] | None) -> PickupSlot | None:
     slot = PickupSlot.from_cart(data) if data else None
     if slot is None or slot.ends_at <= datetime.now(BILKA_TIME_ZONE):
         return None

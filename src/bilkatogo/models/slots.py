@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 
 from .base import BilkaDataClass
-from .cart import cart_pickup_point, is_home_delivery, upcoming_cart_slot
+from .cart import Cart
 from .order import PickupPoint, PickupSlot
 
 # Bilka's `availability_bit`, seen on a day and on an interval: 1 open, 2 closed because its
@@ -14,8 +14,6 @@ from .order import PickupPoint, PickupSlot
 OPEN_BIT = 1
 SOLD_OUT_BIT = 4
 SOLD_OUT_TEXT = "udsolgt"
-# The slot chosen in the Cart, at the top of the answer as in the Cart's `deliveryDate`.
-CHOSEN_SLOT_KEYS = ("deliveryDate", "intervalStart", "intervalEnd")
 
 
 class SlotAvailability(StrEnum):
@@ -94,33 +92,33 @@ class PickupSlots(BilkaDataClass):
     home_delivery: bool
 
     @property
+    def open_slots(self) -> list[AvailablePickupSlot]:
+        """The Pickup Slots that can still be chosen."""
+        return [slot for slot in self.slots if slot.availability is SlotAvailability.OPEN]
+
+    @property
     def next_open(self) -> AvailablePickupSlot | None:
         """The earliest Pickup Slot that can still be chosen."""
-        open_slots = [slot for slot in self.slots if slot.availability is SlotAvailability.OPEN]
+        open_slots = self.open_slots
         if not open_slots:
             return None
         return min(open_slots, key=lambda slot: slot.slot.starts_at)
 
     @classmethod
     def from_dict(
-        cls,
-        data: dict[str, Any],
-        delivery_address: dict[str, Any] | None,
-        *,
-        first_day: date,
-        last_day: date,
+        cls, data: dict[str, Any], cart: Cart, *, first_day: date, last_day: date
     ) -> PickupSlots:
-        """`data` is Bilka's answer and `delivery_address` the Cart's `deliveryAddress`; only
-        days from `first_day` to `last_day`, both included, are kept."""
+        """`data` is Bilka's answer for the `cart`; only days from `first_day` to `last_day`,
+        both included, are kept."""
         slots = []
         days_without_slots = {}
-        for day_data in data.get("availableIntervals") or []:
+        for day_data in _dicts(data.get("availableIntervals")):
             day = _date(day_data.get("date"))
             if day is None or not first_day <= day <= last_day:
                 continue
             day_slots = [
                 slot
-                for interval in day_data.get("intervals") or []
+                for interval in _dicts(day_data.get("intervals"))
                 if (slot := AvailablePickupSlot.from_interval(day, day_data, interval))
             ]
             if not day_slots:
@@ -129,10 +127,16 @@ class PickupSlots(BilkaDataClass):
         return cls(
             slots=slots,
             days_without_slots=days_without_slots,
-            chosen=upcoming_cart_slot({key: data.get(key) for key in CHOSEN_SLOT_KEYS}),
-            pickup_point=cart_pickup_point(delivery_address),
-            home_delivery=is_home_delivery(delivery_address),
+            # The Cart's, not the copy at the top of Bilka's answer: one source for the term.
+            chosen=cart.pickup_slot,
+            pickup_point=cart.pickup_point,
+            home_delivery=cart.home_delivery,
         )
+
+
+def _dicts(value: Any) -> list[dict[str, Any]]:
+    """The objects in a list from Bilka, skipping anything else it might send."""
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 
 def _date(value: Any) -> date | None:

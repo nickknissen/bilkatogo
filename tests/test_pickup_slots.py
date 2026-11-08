@@ -125,43 +125,50 @@ async def test_a_slot_without_info_has_bilkas_closed_text_as_its_note(
 
 
 @pytest.mark.asyncio
-async def test_the_slot_chosen_in_the_cart(
-    logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
-) -> None:
-    freezer.move_to(PICKUP_CAPTURED)
-
-    slots = await fetch(logged_in_cart)
-
-    assert slots.chosen is not None
-    assert (slots.chosen.date, slots.chosen.start, slots.chosen.end) == (
-        date(2026, 11, 11),
-        time(14),
-        time(16),
-    )
-
-
-@pytest.mark.asyncio
-async def test_no_chosen_slot_without_a_delivery_date(
+async def test_the_chosen_slot_is_the_carts_pickup_slot(
     home_delivery_cart: FakeBilka, freezer: FrozenDateTimeFactory
 ) -> None:
     freezer.move_to(HOME_CAPTURED)
 
     slots = await fetch(home_delivery_cart)
 
-    # The capture has `intervalStart` and `intervalEnd` but `deliveryDate: null`.
-    assert slots.chosen is None
+    # The Cart's `deliveryDate`, not the top of Bilka's slot answer, which here has
+    # `intervalStart` and `intervalEnd` but `deliveryDate: null`.
+    assert slots.chosen is not None
+    assert (slots.chosen.date, slots.chosen.start, slots.chosen.end) == (
+        date(2026, 11, 11),
+        time(15),
+        time(22),
+    )
 
 
 @pytest.mark.asyncio
 async def test_a_chosen_slot_that_has_ended_is_none(
     logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
 ) -> None:
-    # Like the Cart, Bilka keeps the last Order's slot for weeks after it ended.
-    freezer.move_to("2026-11-11T16:00:01+01:00")
+    # The Cart holds Sun 01/11 14:00-16:00: Bilka keeps the last Order's slot for weeks.
+    freezer.move_to(PICKUP_CAPTURED)
 
     slots = await fetch(logged_in_cart)
 
     assert slots.chosen is None
+
+
+@pytest.mark.asyncio
+async def test_malformed_days_and_intervals_are_skipped(
+    logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    answer = load_fixture("available_delivery_dates_pickup.json")
+    answer["availableIntervals"][1]["intervals"][1:] = ["10:00 - 12:00", None]
+    answer["availableIntervals"][2]["intervals"] = {"unexpected": "shape"}
+    answer["availableIntervals"].append("2026-11-11")
+    logged_in_cart.script("available_delivery_dates", answer)
+
+    slots = await fetch(logged_in_cart)
+
+    assert [slot.slot.start for slot in slots.slots] == [time(8)]
+    assert date(2026, 11, 10) in slots.days_without_slots
 
 
 @pytest.mark.asyncio

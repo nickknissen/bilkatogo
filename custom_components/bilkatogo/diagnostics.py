@@ -24,6 +24,7 @@ TO_REDACT = {
     "phone",
     "uid",
     "UID",
+    "eid",
     "tid",
     "customerId",
     "customer_id",

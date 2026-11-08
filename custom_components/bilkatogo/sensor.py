@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from bilkatogo import Order, OrderStatus, SlotAvailability
+from bilkatogo import Order, OrderStatus
 
 from .announcer import missing_item_data, substitution_data
 from .const import CURRENCY
@@ -87,9 +87,7 @@ def _next_pickup_slot_attributes(data: BilkaToGoData) -> dict[str, Any] | None:
     slots = data.pickup_slots
     if slots is None:
         return None
-    attributes: dict[str, Any] = {
-        "open_slots": sum(slot.availability is SlotAvailability.OPEN for slot in slots.slots)
-    }
+    attributes: dict[str, Any] = {"open_slots": len(slots.open_slots)}
     if slots.pickup_point:
         attributes["pickup_point"] = slots.pickup_point.name
     if next_open := slots.next_open:

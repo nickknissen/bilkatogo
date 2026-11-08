@@ -575,25 +575,7 @@
         }),
       ]),
       'pickup_slots': dict({
-        'chosen': dict({
-          '_raw': dict({
-            'deliveryDate': '2026-11-11',
-            'intervalEnd': '16:00',
-            'intervalStart': '14:00',
-          }),
-          'date': dict({
-            '__type': "<class 'datetime.date'>",
-            'isoformat': '2026-11-11',
-          }),
-          'end': dict({
-            '__type': "<class 'datetime.time'>",
-            'isoformat': '16:00:00',
-          }),
-          'start': dict({
-            '__type': "<class 'datetime.time'>",
-            'isoformat': '14:00:00',
-          }),
-        }),
+        'chosen': None,
         'days_without_slots': dict({
           '2026-11-08': '',
         }),

@@ -342,11 +342,11 @@ class BilkaToGoClient:
         for what the Cart has: its Pickup Point or Home Delivery. Never chooses one."""
         if days < 1:
             raise ValueError("days must be 1 or more")
-        delivery_address = (await self.get_cart_json()).get("deliveryAddress")
+        cart = await self.get_cart()
         today = datetime.now(BILKA_TIME_ZONE).date()
         return PickupSlots.from_dict(
             await self.get_pickup_slots_json(),
-            delivery_address,
+            cart,
             first_day=today,
             last_day=today + timedelta(days=days - 1),
         )

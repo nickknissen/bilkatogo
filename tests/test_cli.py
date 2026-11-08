@@ -1104,6 +1104,8 @@ def test_pickup_slots_prints_a_table_and_the_next_open_slot(
     invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
 ) -> None:
     freezer.move_to(PICKUP_CAPTURED)
+    # What the Cart held when the slots were captured.
+    logged_in_cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-11")
 
     result = invoke("pickup-slots", "--days", "2", "--email", EMAIL, "--password", PASSWORD)
 
@@ -1172,4 +1174,5 @@ def test_pickup_slots_json(
     }
     assert slots["days_without_slots"] == {"2026-11-03": "udsolgt"}
     assert slots["next_open"] == slots["slots"][1]
-    assert (slots["chosen"], slots["pickup_point"], slots["home_delivery"]) == (None, None, True)
+    assert slots["chosen"] == {"date": "2026-11-11", "start": "15:00:00", "end": "22:00:00"}
+    assert (slots["pickup_point"], slots["home_delivery"]) == (None, True)
