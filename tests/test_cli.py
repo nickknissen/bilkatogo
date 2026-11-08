@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 from typer.testing import CliRunner
 
 from bilkatogo import FileTokenStorage
@@ -642,7 +643,11 @@ def test_search_json(invoke) -> None:
     }
 
 
-def test_cart_prints_cart_lines_total_and_pickup_point(invoke, logged_in_cart: FakeBilka) -> None:
+def test_cart_prints_cart_lines_total_and_pickup_point(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-10-30T12:00:00+01:00")
+
     result = invoke("cart", "--email", EMAIL, "--password", PASSWORD)
 
     assert result.exit_code == 0, result.output
@@ -651,15 +656,83 @@ def test_cart_prints_cart_lines_total_and_pickup_point(invoke, logged_in_cart: F
     bananas = lines[1].split()
     assert bananas[:2] == ["18381", "Bananer"]
     assert bananas[2:] == ["10", "2.75", "kr", "25.00", "kr"]
-    assert len(lines) == 1 + 5 + 6
     assert lines[6:] == [
-        "Pickup Point Bilka Vejle",
-        "Cart Total   127.00 kr",
-        "Deposit      0.00 kr",
-        "Service Fee  39.00 kr",
-        "Packaging    0.00 kr",
-        "Discount     9.50 kr",
+        "Pickup Point   Bilka Vejle",
+        "Pickup Slot    Sun 01/11 14:00-16:00",
+        "Next Available 2026-10-27",
+        "Cart Total     127.00 kr",
+        "Deposit        0.00 kr",
+        "Service Fee    39.00 kr",
+        "Packaging      0.00 kr",
+        "Delivery Fee   0.00 kr",
+        "Discount       9.50 kr",
     ]
+
+
+def test_home_delivery_cart_prints_the_minimum_order_and_not_the_address(
+    invoke, home_delivery_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-11-02T12:00:00+01:00")
+
+    result = invoke("cart", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[6:] == [
+        "Pickup Point   Home Delivery",
+        "Pickup Slot    ",
+        "Next Available 2026-11-03",
+        "Cart Total     127.00 kr",
+        "Deposit        0.00 kr",
+        "Service Fee    39.00 kr",
+        "Packaging      0.00 kr",
+        "Delivery Fee   39.00 kr",
+        "Discount       9.50 kr",
+        "Minimum Order  500.00 kr (373.00 kr left)",
+        "Warning from Bilka: 373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. "
+        "for at få hjemmelevering",
+    ]
+    for personal in ("Kunde Eksempel", "Testvej", "Eksempelby"):
+        assert personal not in result.output
+
+
+def test_minimum_order_reached_prints_just_the_amount(
+    invoke, home_delivery_cart: FakeBilka
+) -> None:
+    home_delivery_cart.cart_contents["stat"]["minimum_left"] = 0
+
+    result = invoke("cart", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[-1] == "Minimum Order  500.00 kr"
+
+
+def test_home_delivery_cart_json(invoke, home_delivery_cart: FakeBilka) -> None:
+    result = invoke("cart", "--email", EMAIL, "--password", PASSWORD, "--json")
+
+    assert result.exit_code == 0, result.output
+    cart = json.loads(result.output)
+    assert {
+        key: cart[key]
+        for key in (
+            "home_delivery",
+            "pickup_point",
+            "store_id",
+            "delivery_fee",
+            "minimum_order",
+            "minimum_left",
+            "next_available_date",
+            "warnings",
+        )
+    } == {
+        "home_delivery": True,
+        "pickup_point": None,
+        "store_id": "1661",
+        "delivery_fee": "39.00",
+        "minimum_order": "500.00",
+        "minimum_left": "373.00",
+        "next_available_date": "2026-11-03",
+        "warnings": ["373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"],
+    }
 
 
 def test_empty_cart_says_so(invoke) -> None:
@@ -668,7 +741,7 @@ def test_empty_cart_says_so(invoke) -> None:
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
     assert lines[0] == "No Cart Lines."
-    assert lines[1] == "Pickup Point Bilka Waves, Hundige"
+    assert lines[1] == "Pickup Point   Bilka Waves, Hundige"
 
 
 def test_cart_json(invoke, logged_in_cart: FakeBilka) -> None:
@@ -693,6 +766,9 @@ def test_cart_json(invoke, logged_in_cart: FakeBilka) -> None:
     assert cart["discount"] == "9.50"
     assert cart["pickup_point"]["name"] == "Bilka Vejle"
     assert cart["pickup_point"]["store_id"] == "1661"
+    assert cart["home_delivery"] is False
+    assert cart["minimum_order"] is None
+    assert "pickup_slot" in cart
 
 
 def test_cart_set_prints_the_updated_cart(invoke, logged_in_cart: FakeBilka) -> None:

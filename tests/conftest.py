@@ -40,5 +40,11 @@ def logged_in_cart(bilka: FakeBilka) -> FakeBilka:
 
 
 @pytest.fixture
+def home_delivery_cart(bilka: FakeBilka) -> FakeBilka:
+    bilka.cart_contents = load_fixture("cart_home.json")
+    return bilka
+
+
+@pytest.fixture
 def storage() -> MemoryTokenStorage:
     return MemoryTokenStorage()

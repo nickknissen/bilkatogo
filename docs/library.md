@@ -70,8 +70,15 @@ asyncio.run(main())
 - `get_cart()` returns your `Cart`: its `lines` (each a `CartLine` with `product`,
   `article_number`, `quantity`, `price` and `line_total`, with any Multibuy Offer already
   applied in the line total), the Cart `total` broken down into `deposit`, `service_fee`,
-  `packaging` and `discount`, and the chosen `pickup_point`. Bilka's bag and Pakkeservice lines
-  are not Cart Lines; they show up as `packaging` and `service_fee`.
+  `packaging`, `delivery_fee` and `discount`, and the chosen `pickup_point`. Bilka's bag and
+  Pakkeservice lines are not Cart Lines; they show up as `packaging` and `service_fee`.
+  `home_delivery` is `True` when the Cart is brought to the customer's address, as on `Order`;
+  `pickup_point` is then `None`, and `store_id` is the Store that serves the Cart either way.
+  `minimum_order` is the Minimum Order (`None` when Bilka sets none, as for pickup) and
+  `minimum_left` how much more the Cart needs to reach it. `pickup_slot` is the Pickup Slot
+  chosen in the Cart, `None` once it has ended (Bilka keeps the last Order's slot there for
+  weeks), and `next_available_date` the next day Bilka can deliver. `warnings` holds Bilka's
+  notices on the Cart, such as how far it is from the Minimum Order.
 - `set_cart_quantity(article_number, quantity)` sets how many of a Product the Cart holds (0
   removes the Cart Line), `add_to_cart(article_number, quantity=1)` adds to what is there,
   `remove_from_cart(article_number, quantity=None)` takes `quantity` off what is there (the whole

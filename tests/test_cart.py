@@ -1,8 +1,11 @@
+from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
+from freezegun.api import FrozenDateTimeFactory
 
 from bilkatogo import BilkaToGoClient, Cart
+from bilkatogo.const import BILKA_TIME_ZONE
 from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, load_fixture
 
 
@@ -82,6 +85,155 @@ async def test_cart_has_the_chosen_pickup_point(logged_in_cart: FakeBilka) -> No
     assert cart.pickup_point is not None
     assert cart.pickup_point.name == "Bilka Vejle"
     assert cart.pickup_point.store_id == "1661"
+
+
+@pytest.mark.asyncio
+async def test_pickup_cart_is_not_home_delivery_and_has_its_store(bilka: FakeBilka) -> None:
+    cart = await fetch(bilka)
+
+    assert cart.home_delivery is False
+    assert cart.pickup_point is not None
+    assert cart.store_id == "1653"
+
+
+@pytest.mark.asyncio
+async def test_home_delivery_cart_has_no_pickup_point_but_a_store(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    cart = await fetch(home_delivery_cart)
+
+    assert cart.home_delivery is True
+    assert cart.pickup_point is None
+    assert cart.store_id == "1661"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "marker", [{"dawa_uid": None}, {"recipient_name": ""}], ids=["by_name", "by_dawa_uid"]
+)
+async def test_either_home_address_field_marks_home_delivery(
+    home_delivery_cart: FakeBilka, marker: dict
+) -> None:
+    home_delivery_cart.cart_contents["deliveryAddress"].update(marker)
+
+    cart = await fetch(home_delivery_cart)
+
+    assert cart.home_delivery is True
+    assert cart.pickup_point is None
+
+
+@pytest.mark.asyncio
+async def test_home_delivery_cart_has_its_minimum_order_and_delivery_fee(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    cart = await fetch(home_delivery_cart)
+
+    assert cart.minimum_order == Decimal("500.00")
+    assert cart.minimum_left == Decimal("373.00")
+    assert cart.delivery_fee == Decimal("39.00")
+    assert cart.next_available_date == date(2026, 11, 3)
+
+
+@pytest.mark.asyncio
+async def test_pickup_cart_has_no_minimum_order_or_delivery_fee(
+    logged_in_cart: FakeBilka,
+) -> None:
+    cart = await fetch(logged_in_cart)
+
+    assert cart.minimum_order is None
+    assert cart.minimum_left == Decimal("0.00")
+    assert cart.delivery_fee == Decimal("0.00")
+    assert cart.next_available_date == date(2026, 10, 27)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [None, "", "snart", "2026-13-01"])
+async def test_unreadable_next_available_date_is_none(
+    logged_in_cart: FakeBilka, value: str | None
+) -> None:
+    logged_in_cart.cart_contents["deliveryAddress"]["nextAvailableDeliveryDate"] = value
+
+    cart = await fetch(logged_in_cart)
+
+    assert cart.next_available_date is None
+
+
+@pytest.mark.asyncio
+async def test_minimum_order_not_reached_is_a_warning_without_html(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    cart = await fetch(home_delivery_cart)
+
+    assert cart.warnings == [
+        "373,00 kr. fra minimumskøb på 500,00 kr. alt inkl. for at få hjemmelevering"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_minimum_order_reached_is_no_warning(home_delivery_cart: FakeBilka) -> None:
+    home_delivery_cart.cart_contents["stat"]["minimum_left"] = 0
+
+    cart = await fetch(home_delivery_cart)
+
+    assert cart.warnings == []
+
+
+@pytest.mark.asyncio
+async def test_bilkas_cart_messages_are_warnings(logged_in_cart: FakeBilka) -> None:
+    logged_in_cart.cart_contents["messages"] = [
+        {"text": "Vi har travlt i weekenden", "type": "info"},
+        "Butikken lukker kl. 20",
+    ]
+
+    cart = await fetch(logged_in_cart)
+
+    assert cart.warnings == ["Vi har travlt i weekenden", "Butikken lukker kl. 20"]
+
+
+@pytest.mark.asyncio
+async def test_chosen_pickup_slot_that_lies_ahead(
+    logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-11-01T15:59:00+01:00")
+
+    cart = await fetch(logged_in_cart)
+
+    assert cart.pickup_slot is not None
+    assert cart.pickup_slot.starts_at == datetime(2026, 11, 1, 14, tzinfo=BILKA_TIME_ZONE)
+    assert cart.pickup_slot.ends_at == datetime(2026, 11, 1, 16, tzinfo=BILKA_TIME_ZONE)
+
+
+@pytest.mark.asyncio
+async def test_chosen_pickup_slot_that_has_ended_is_none(
+    logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-11-01T16:00:01+01:00")
+
+    cart = await fetch(logged_in_cart)
+
+    assert cart.pickup_slot is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "delivery_date",
+    [
+        None,
+        {"deliveryDate": "2026-11-01", "intervalStart": "14:00"},
+        {"deliveryDate": "i morgen", "intervalStart": "14:00", "intervalEnd": "16:00"},
+        {"deliveryDate": "2026-11-01", "intervalStart": "14:00", "intervalEnd": "sent"},
+    ],
+    ids=["missing", "no_end", "bad_date", "bad_time"],
+)
+async def test_unreadable_chosen_pickup_slot_is_none(
+    logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory, delivery_date: dict | None
+) -> None:
+    freezer.move_to("2026-10-30T12:00:00+01:00")
+    logged_in_cart.cart_contents["deliveryDate"] = delivery_date
+
+    cart = await fetch(logged_in_cart)
+
+    assert cart.pickup_slot is None
 
 
 @pytest.mark.asyncio

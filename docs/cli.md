@@ -24,7 +24,7 @@ bilkatogo search skyr           # Products with Article Number, Price, stock and
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
 bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
 bilkatogo search kaffe --on-offer --in-leaflet  # Offers and Multibuy Offers in this week's Leaflet
-bilkatogo cart                  # your Cart Lines, the Cart total and your Pickup Point
+bilkatogo cart                  # your Cart Lines, the Cart total, Pickup Point or Home Delivery, Pickup Slot, fees and Minimum Order
 bilkatogo cart add 18381 --quantity 2   # add 2 of a Product by Article Number
 bilkatogo cart add-items 18381:10 19753 140787:2   # add several; 19753 gets --quantity (1)
 bilkatogo cart set 18381 5      # hold exactly 5

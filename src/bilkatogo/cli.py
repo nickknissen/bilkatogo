@@ -480,7 +480,7 @@ async def cart(
     raw: RawOption = False,
     redact: RedactOption = False,
 ) -> None:
-    """Show your Cart: its Cart Lines, the Cart total and your Pickup Point."""
+    """Show your Cart: its Cart Lines, the Cart total, Pickup Point or Home Delivery and fees."""
     if ctx.invoked_subcommand is not None:
         check_no_cart_output_options(ctx.invoked_subcommand, as_json, raw, redact)
         return
@@ -647,8 +647,6 @@ async def change_cart(
         typer.echo(to_json(found))
         return
     print_cart(found)
-    for warning in found.warnings:
-        typer.echo(f"Warning from Bilka: {warning}")
 
 
 def print_cart(found: Cart) -> None:
@@ -669,15 +667,28 @@ def print_cart(found: Cart) -> None:
     else:
         typer.echo("No Cart Lines.")
     fields = [
-        ("Pickup Point", found.pickup_point.name if found.pickup_point else ""),
+        ("Pickup Point", format_point(found.pickup_point, found.home_delivery)),
+        ("Pickup Slot", format_slot(found.pickup_slot)),
+        (
+            "Next Available",
+            found.next_available_date.isoformat() if found.next_available_date else "",
+        ),
         ("Cart Total", format_amount(found.total)),
         ("Deposit", format_amount(found.deposit)),
         ("Service Fee", format_amount(found.service_fee)),
         ("Packaging", format_amount(found.packaging)),
+        ("Delivery Fee", format_amount(found.delivery_fee)),
         ("Discount", format_amount(found.discount)),
     ]
+    if found.minimum_order is not None:
+        minimum = format_amount(found.minimum_order)
+        if found.minimum_left > 0:
+            minimum += f" ({format_amount(found.minimum_left)} left)"
+        fields.append(("Minimum Order", minimum))
     for label, value in fields:
-        typer.echo(f"{label:<12} {value}")
+        typer.echo(f"{label:<14} {value}")
+    for warning in found.warnings:
+        typer.echo(f"Warning from Bilka: {warning}")
 
 
 def main() -> None:

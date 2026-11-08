@@ -66,6 +66,15 @@ async def test_cart_pickup_point_survives_a_cart_line_that_does_not_parse(
 
 
 @pytest.mark.asyncio
+async def test_home_delivery_cart_has_no_pickup_point(home_delivery_cart: FakeBilka) -> None:
+    async with (
+        home_delivery_cart.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        assert await client.get_cart_pickup_point() is None
+
+
+@pytest.mark.asyncio
 async def test_cart_without_a_pickup_point_has_none(bilka: FakeBilka) -> None:
     bilka.cart_contents = {**bilka.cart_contents, "deliveryAddress": None}
     async with (
