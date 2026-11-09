@@ -3,7 +3,7 @@ from asyncio import sleep
 from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from types import TracebackType
-from typing import Any, Self
+from typing import Any, NamedTuple, Self
 from urllib.parse import urlencode
 
 import httpx
@@ -69,7 +69,7 @@ from .models import (
     SlotAvailability,
 )
 from .models.cart import cart_pickup_point, cart_store_id, is_home_delivery, is_pickup_point
-from .models.product import product_attributes, sort_products
+from .models.product import blockbit, product_attributes, sort_products
 from .token_storage import TokenStorage
 
 
@@ -151,6 +151,14 @@ class _ShopRefusedError(UnexpectedResponseError):
         super().__init__(f"{path}: {reason}")
         self.reason = reason
         self.eid = eid
+
+
+class _ProductPlace(NamedTuple):
+    """Where Products are looked up for: the Store whose assortment, Prices and stock they
+    have, and the place's `blockbit`, which marks those under a Delivery Block."""
+
+    store_id: str
+    blockbit: int
 
 
 class BilkaToGoClient:
@@ -326,22 +334,27 @@ class BilkaToGoClient:
     async def get_pickup_points(self) -> list[PickupPoint]:
         """The Pickup Points the Cart can be moved to; never the Home Address, which Bilka
         lists among them while the Cart is on Home Delivery."""
+        return [
+            PickupPoint.from_delivery_address(address)
+            for address in await self._pickup_point_addresses()
+        ]
+
+    async def get_pickup_point(self, name: str) -> PickupPoint:
+        return PickupPoint.from_delivery_address(await self._pickup_point_address(name))
+
+    async def _pickup_point_addresses(self) -> list[dict[str, Any]]:
         data = await self._shop("GET", "shop/v6/AvailableDeliveryAddresses", {"orderByZipcode": 1})
         addresses = [
             address for address in data.get("addresses") or [] if isinstance(address, dict)
         ]
         await self._remember_home_address([data.get("activeAddress"), *addresses])
-        return [
-            PickupPoint.from_delivery_address(address)
-            for address in addresses
-            if is_pickup_point(address)
-        ]
+        return [address for address in addresses if is_pickup_point(address)]
 
-    async def get_pickup_point(self, name: str) -> PickupPoint:
+    async def _pickup_point_address(self, name: str) -> dict[str, Any]:
         wanted = name.strip().casefold()
-        for point in await self.get_pickup_points():
-            if point.name.casefold() == wanted:
-                return point
+        for address in await self._pickup_point_addresses():
+            if PickupPoint.from_delivery_address(address).name.casefold() == wanted:
+                return address
         raise UnknownPickupPointError(name)
 
     async def get_cart(self) -> Cart:
@@ -622,7 +635,8 @@ class BilkaToGoClient:
         Multibuy Offer there, `in_leaflet` those in this week's Leaflet. `sort` orders the
         `limit` best matches; it does not search the whole assortment for the cheapest.
         """
-        store_id = await self._store_id(pickup_point)
+        place = await self._product_place(pickup_point)
+        store_id = place.store_id
         filters = [f"isInAssortmentIn:{store_id}", "nonsearchable:false"]
         if in_stock:
             filters.append(f"inStockStore:{store_id}")
@@ -631,7 +645,7 @@ class BilkaToGoClient:
         if in_leaflet:
             filters.append("isInCurrentLeaflet:true")
         products = await self._query_products(
-            store_id,
+            place,
             query=text,
             hitsPerPage=limit,
             removeWordsIfNoResults="allOptional",
@@ -659,13 +673,13 @@ class BilkaToGoClient:
             )
         if not wanted:
             return []
-        store_id = await self._store_id(pickup_point)
+        place = await self._product_place(pickup_point)
         ids = " OR ".join(f"objectID:{article_number}" for article_number in wanted)
         products = await self._query_products(
-            store_id,
+            place,
             query="",
             hitsPerPage=len(wanted),
-            filters=f"({ids}) AND isInAssortmentIn:{store_id}",
+            filters=f"({ids}) AND isInAssortmentIn:{place.store_id}",
         )
         by_number = {product.article_number: product for product in products}
         return [by_number[number] for number in wanted if number in by_number]
@@ -682,21 +696,24 @@ class BilkaToGoClient:
         details.products = await self.get_products(details.article_numbers)
         return details
 
-    async def _store_id(self, pickup_point: str | None) -> str:
-        """The Store of the named Pickup Point, or else the one that serves the Cart."""
-        store_id = (
-            (await self.get_pickup_point(pickup_point)).store_id
-            if pickup_point is not None
-            else cart_store_id((await self.get_cart_json()).get("deliveryAddress"))
-        )
+    async def _product_place(self, pickup_point: str | None) -> _ProductPlace:
+        """The Store and `blockbit` of the named Pickup Point, or else of the Cart: its Store
+        and, like the website, its own top-level `blockbit`."""
+        if pickup_point is not None:
+            address = await self._pickup_point_address(pickup_point)
+            store_id, place_blockbit = cart_store_id(address), blockbit(address)
+        else:
+            cart = await self.get_cart_json()
+            store_id, place_blockbit = cart_store_id(cart.get("deliveryAddress")), blockbit(cart)
         if store_id is None:
             raise NoPickupPointError(
                 "No Pickup Point or Home Delivery address chosen in the Cart; "
                 "name a Pickup Point to search at"
             )
-        return store_id
+        return _ProductPlace(store_id, place_blockbit)
 
-    async def _query_products(self, store_id: str, **params: Any) -> list[Product]:
+    async def _query_products(self, place: _ProductPlace, **params: Any) -> list[Product]:
+        store_id = place.store_id
         params["attributesToRetrieve"] = json.dumps(product_attributes(store_id))
         response = await self._request(
             "POST",
@@ -714,7 +731,7 @@ class BilkaToGoClient:
             hits = result["hits"]
         except KeyError, TypeError, ValueError:
             raise UnexpectedResponseError("Product search answered without results") from None
-        products = (Product.from_hit(hit, store_id) for hit in hits)
+        products = (Product.from_hit(hit, store_id, place.blockbit) for hit in hits)
         return [product for product in products if product is not None]
 
     async def _shop(self, method: str, path: str, params: dict[str, Any]) -> dict[str, Any]:

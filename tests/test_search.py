@@ -184,6 +184,107 @@ async def test_named_pickup_point_searches_its_store(bilka: FakeBilka) -> None:
     assert product.in_stock is True
 
 
+def block_for_pickup_points(bilka: FakeBilka) -> None:
+    """The skyr gets a `blockbit` that shares bit 8 with the standalone Pickup Points' 43, the
+    bananas one (128) that shares none."""
+    bilka.products[0]["blockbit"] = 8
+    bilka.products[2]["blockbit"] = 128
+
+
+def deliverable(products: list[Product]) -> dict[str, bool]:
+    return {product.article_number: product.deliverable for product in products}
+
+
+@pytest.mark.asyncio
+async def test_products_are_deliverable_at_a_bilka_store(bilka: FakeBilka) -> None:
+    block_for_pickup_points(bilka)
+    bilka.move_cart_to("Bilka Vejle")
+
+    products = await search(bilka, "")
+
+    assert json.loads(algolia_query(bilka.calls("algolia")[0])["attributesToRetrieve"]) == [
+        "name",
+        "brand",
+        "price",
+        "gtin",
+        "units",
+        "unitsOfMeasure",
+        "productType",
+        "deepestCategoryPath",
+        "blockbit",
+        "storeData.1661",
+    ]
+    assert deliverable(products) == dict.fromkeys(
+        ["19753", "128298", "18381", "140787", "169794"], True
+    )
+
+
+@pytest.mark.asyncio
+async def test_products_blocked_at_the_carts_pickup_point_are_marked_not_left_out(
+    bilka: FakeBilka,
+) -> None:
+    block_for_pickup_points(bilka)
+    bilka.move_cart_to("Pickup Fredericia")
+
+    products = await search(bilka, "", limit=5)
+
+    assert deliverable(products) == {
+        "19753": False,
+        "128298": True,
+        "18381": True,
+        "140787": True,
+        "169794": True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_products_blocked_at_a_named_pickup_point_are_marked_wherever_the_cart_is(
+    bilka: FakeBilka,
+) -> None:
+    block_for_pickup_points(bilka)
+
+    at_point = await search(bilka, "", pickup_point="Pickup Fredericia")
+    bilka.move_cart_to("Pickup Fredericia")
+    at_store = await search(bilka, "", pickup_point="Bilka Vejle")
+
+    assert deliverable(at_point)["19753"] is False
+    assert deliverable(at_store)["19753"] is True
+
+
+@pytest.mark.asyncio
+async def test_products_blocked_for_home_delivery_are_marked(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    # The Home Delivery Cart's `blockbit` is 7 (captured 2026-11-08): 12 shares bit 4.
+    home_delivery_cart.products[3]["blockbit"] = 12
+
+    [product] = await search(home_delivery_cart, "mozzarella")
+
+    assert product.deliverable is False
+
+
+@pytest.mark.asyncio
+async def test_a_product_or_place_without_a_blockbit_is_deliverable(bilka: FakeBilka) -> None:
+    bilka.move_cart_to("Pickup Fredericia")
+    del bilka.products[0]["blockbit"]
+    bilka.products[1]["blockbit"] = None
+    bilka.products[2]["blockbit"] = 8
+    del bilka.cart_contents["blockbit"]
+
+    products = await search(bilka, "")
+
+    assert all(deliverable(products).values())
+
+
+def test_a_product_read_without_a_place_is_deliverable() -> None:
+    [hit, *_] = load_fixture("algolia_products.json")["hits"]
+
+    product = Product.from_hit({**hit, "blockbit": 8}, "1653")
+
+    assert product is not None
+    assert product.deliverable is True
+
+
 @pytest.mark.asyncio
 async def test_unknown_pickup_point_does_not_search(bilka: FakeBilka) -> None:
     with pytest.raises(UnknownPickupPointError):

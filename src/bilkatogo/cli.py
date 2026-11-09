@@ -733,6 +733,7 @@ def print_products(found: list[Product], as_json: bool) -> None:
 
 def product_row(product: Product) -> list[str]:
     unit_price = f"{format_amount(product.unit_price)}/{product.unit}" if product.unit else ""
+    stock = "In stock" if product.in_stock else "Out of stock"
     return [
         product.article_number,
         product.name,
@@ -740,7 +741,7 @@ def product_row(product: Product) -> list[str]:
         product.brand,
         format_amount(product.price),
         unit_price,
-        "In stock" if product.in_stock else "Out of stock",
+        stock if product.deliverable else f"{stock}, not delivered here",
         format_offer(product.offer) if product.offer else product.multibuy_offer or "",
     ]
 

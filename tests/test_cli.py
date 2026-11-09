@@ -822,7 +822,23 @@ def test_search_json(invoke) -> None:
         "size": "800 g",
         "category": "Mejeri & køl > Mejeri > Yoghurt & syrnede mælkeprodukter > Skyr "
         "> Skyr m. smag",
+        "deliverable": True,
     }
+
+
+def test_search_marks_products_not_delivered_to_the_carts_place(invoke, bilka: FakeBilka) -> None:
+    # 8 shares a bit with the standalone Pickup Points' `blockbit` 43.
+    bilka.products[0]["blockbit"] = 8
+    bilka.move_cart_to("Pickup Fredericia")
+
+    table = invoke("search", "skyr", "--email", EMAIL, "--password", PASSWORD)
+    as_json = invoke("search", "skyr", "--email", EMAIL, "--password", PASSWORD, "--json")
+
+    assert table.exit_code == 0, table.output
+    rows = search_rows(table.output)
+    assert "In stock, not delivered here" in rows["19753"]
+    assert "not delivered here" not in rows["128298"]
+    assert [product["deliverable"] for product in json.loads(as_json.output)] == [False, True]
 
 
 def test_products_prints_the_products_asked_for_in_order(invoke, bilka: FakeBilka) -> None:

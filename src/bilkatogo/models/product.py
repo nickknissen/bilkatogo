@@ -35,10 +35,17 @@ class Product(BilkaDataClass):
     """How much one unit holds, as the website writes it, e.g. "500 g" or "1,5 l"."""
     category: str | None
     """Bilka's category path and product type, e.g. "Frugt & grønt > Frugt > Bananer"."""
+    deliverable: bool = True
+    """False under a Delivery Block: the Store sells it, but Bilka won't deliver it with the
+    delivery method of the place it was looked up for."""
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
-    def from_hit(cls, hit: dict[str, Any], store_id: str) -> Product | None:
+    def from_hit(
+        cls, hit: dict[str, Any], store_id: str, place_blockbit: int = 0
+    ) -> Product | None:
+        """The Product in an Algolia hit at a Store; `place_blockbit` is the `blockbit` of the
+        place it is looked up for, 0 for none."""
         store = (hit.get("storeData") or {}).get(store_id)
         if not store:
             return None
@@ -70,7 +77,17 @@ class Product(BilkaDataClass):
             ean=hit.get("gtin") or None,
             size=size_of(hit),
             category=_category(hit.get("deepestCategoryPath"), hit.get("productType")),
+            deliverable=not blockbit(hit) & place_blockbit,
         )
+
+
+def blockbit(data: dict[str, Any] | None) -> int:
+    """Bilka's `blockbit` of a Product, a Cart or a place; 0 when missing. A Product is under a
+    Delivery Block where its bits and the place's share one; no bit means anything alone."""
+    try:
+        return int((data or {}).get("blockbit") or 0)
+    except TypeError, ValueError:
+        return 0
 
 
 def size_of(product: dict[str, Any]) -> str | None:
@@ -111,6 +128,7 @@ def product_attributes(store_id: str) -> list[str]:
         "unitsOfMeasure",
         "productType",
         "deepestCategoryPath",
+        "blockbit",
         f"storeData.{store_id}",
     ]
 

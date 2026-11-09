@@ -335,6 +335,7 @@ async def test_search_returns_products_at_the_carts_store(
                 "unit_price": 30.95,
                 "unit": "kg",
                 "in_stock": True,
+                "deliverable": True,
                 "offer": None,
                 "multibuy_offer": None,
             },
@@ -346,6 +347,7 @@ async def test_search_returns_products_at_the_carts_store(
                 "unit_price": 49.14,
                 "unit": "kg",
                 "in_stock": True,
+                "deliverable": True,
                 "offer": {
                     "label": "Skarp pris",
                     "price": 25.0,
@@ -357,6 +359,19 @@ async def test_search_returns_products_at_the_carts_store(
             },
         ]
     }
+
+
+async def test_search_marks_products_not_delivered_to_the_carts_place(
+    hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
+) -> None:
+    # 8 shares a bit with the standalone Pickup Points' `blockbit` 43.
+    bilka.products[0]["blockbit"] = 8
+    bilka.move_cart_to("Pickup Fredericia")
+    await setup_integration()
+
+    response = await call(hass, "search", {"query": "skyr"})
+
+    assert [product["deliverable"] for product in response["products"]] == [False, True]
 
 
 async def test_search_returns_the_offer_end_date_and_multibuy_offer(

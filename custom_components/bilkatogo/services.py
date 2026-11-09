@@ -279,6 +279,7 @@ def _product_response(product: Product) -> dict[str, Any]:
         "unit_price": float(product.unit_price) if product.unit_price is not None else None,
         "unit": product.unit,
         "in_stock": product.in_stock,
+        "deliverable": product.deliverable,
         "offer": {
             "label": offer.label,
             "price": float(offer.price),

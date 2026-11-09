@@ -72,6 +72,10 @@ asyncio.run(main())
   and takes at most 1000 at once. Anything but digits raises `ValueError`. Each `Product` has its `ean`, `size` (e.g. "1 kg") and
   `category` (Bilka's category path and product type, e.g. "Frugt & grønt > Frugt > Bananer"),
   each `None` when Bilka has none. Bilka's placeholder Offer label "Se Her" reads "Tilbud".
+  `deliverable` is `False` for a Product under a Delivery Block: the Store sells it, but Bilka
+  won't deliver it to the place it was looked up for (the Cart's, or the named Pickup Point),
+  and `add_to_cart` would raise `CartChangeRejectedError`. Such Products are marked, never
+  left out.
 - `Order.status` is an `OrderStatus` (Processing, Received, Packed, Picked Up, Not Collected,
   Cancelled, Sold Out, Unknown), using the same words as the website. The raw Bilka status code
   is kept in `status_code`. The mapping is listed in [GLOSSARY.md](../GLOSSARY.md).
