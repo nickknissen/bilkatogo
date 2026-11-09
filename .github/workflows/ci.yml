@@ -46,8 +46,10 @@ jobs:
       - run: uv run --no-sync mypy --strict --explicit-package-bases custom_components/bilkatogo
       - run: uv run --no-sync pytest tests/ha
 
-  # The oldest Home Assistant that hacs.json allows. Its test plugin pins dependencies
-  # that conflict with the locked ha group, so it gets its own environment.
+  # The oldest Home Assistant that hacs.json allows. pytest-homeassistant starts at 2026.11,
+  # so this tests with its predecessor, pytest-homeassistant-custom-component, whose module
+  # names tests/ha/__init__.py maps. It pins dependencies that conflict with the locked ha
+  # group, so it gets its own environment.
   ha-test-oldest:
     runs-on: ubuntu-latest
     steps:
