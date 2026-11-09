@@ -15,7 +15,7 @@ The customer's Order before it is placed: its Cart Lines and how it is to be rec
 _Avoid_: Basket, kurv
 
 **Cart Line**:
-One Product with its quantity in the Cart, with its Price and line total. Becomes an Order Line once the Order is placed.
+One Product with its quantity in the Cart, with its Price and line total. Becomes an Order Line once the Order is placed. Bilka can mark a Cart Line unavailable where the Cart is now received, with a reason such as "Udsolgt", and keeps it in the Cart (`unavailable_reason`, under "Ikke tilgængeligt").
 _Avoid_: Basket item, Order Line (that belongs to a placed Order)
 
 **Current Order**:
@@ -78,17 +78,17 @@ What Bilka charges for bags, shown on the website as "Emballage". Bilka's `stat.
 _Avoid_: Bags
 
 **Delivery Fee**:
-What Bilka charges for Home Delivery. Bilka's `stat.delivery_price` on the Order and the Cart.
+What Bilka charges for getting the Order to the customer other than at a Bilka store: Home Delivery, or a standalone Pickup Point. Shown on the website as "Leveringsgebyr". Bilka's `stat.delivery_price` on the Order and the Cart.
 
 **Discount**:
 The total saved on the Order through Offers, membership and vouchers. The sum of Bilka's `stat.promo`, `stat.membership_offer_discount`, `stat.personalized_offer_discount` and the `amount` of each voucher in `stat.vouchers`, on the Order and the Cart.
 _Avoid_: Promo, savings
 
 **Home Delivery**:
-An Order that is brought to the customer's address instead of collected at a Pickup Point. Bilka's `pickupzone.home_delivery` on an Order. The Cart has no such flag: its `deliveryAddress` is a home address when it has a `dawa_uid` or a `recipient_name`, both empty for a Pickup Point (ADR 0005).
+An Order that is brought to the customer's address instead of collected at a Pickup Point. Bilka's `pickupzone.home_delivery` on an Order. The Cart has no such flag: its `deliveryAddress` is a Home Address when it has a `recipient_name` (or a `dawa_uid`), both empty for a Pickup Point (ADR 0005).
 
 **Home Address**:
-An address saved in the customer's BilkaToGo account that Home Delivery can bring the Cart to. Bilka lists it among the places in `AvailableDeliveryAddresses`, next to the Pickup Points. It is not a Pickup Point.
+Where Home Delivery brings the Cart: the customer's zip code and name, served by one Store. Bilka shows it among the places a Cart can go (`AvailableDeliveryAddresses`, `facility` 8) only while the Cart is on Home Delivery, and may not know the street yet. It is not a Pickup Point.
 _Avoid_: Delivery address, home (alone), place
 
 **Minimum Order**:
