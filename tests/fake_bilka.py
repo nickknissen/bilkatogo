@@ -316,20 +316,29 @@ class FakeBilka:
         place = self._place(params["id"], params.get("zipcode", ""))
         if place is None:
             return httpx.Response(200, json=load_fixture("set_delivery_address_unknown.json"))
-        cart = self.cart_contents
-        if self.slot_offered_at is None:
-            self.slot_offered_at = {str((cart.get("deliveryAddress") or {}).get("id"))}
-        cart["deliveryAddress"] = place
-        cart["blockbit"] = place["blockbit"]
-        if cart.get("deliveryDate"):
-            cart["deliveryDate"]["closed"] = 0 if place["id"] in self.slot_offered_at else 1
-        self._charge_fees(place["facility"])
-        self._mark_unsold(self.unsold.get(place["sid"], set()))
+        self._move_cart(place)
         answer = {
             **load_fixture("set_delivery_address.json"),
             "activeAddress": copy.deepcopy(place),
         }
         return httpx.Response(200, json=answer)
+
+    def move_cart_to(self, name: str) -> None:
+        """Puts the Cart at the listed place with this name, as SetDeliveryAddress would."""
+        [address] = [a for a in self.delivery_addresses["addresses"] if a["name"] == name]
+        self._move_cart(copy.deepcopy(address))
+
+    def _move_cart(self, place: dict[str, Any]) -> None:
+        cart = self.cart_contents
+        if self.slot_offered_at is None:
+            self.slot_offered_at = {str((cart.get("deliveryAddress") or {}).get("id"))}
+        cart["deliveryAddress"] = place
+        # Bilka copies the place's `blockbit` to the top of the Cart (captured 2026-11-09).
+        cart["blockbit"] = place["blockbit"]
+        if cart.get("deliveryDate"):
+            cart["deliveryDate"]["closed"] = 0 if place["id"] in self.slot_offered_at else 1
+        self._charge_fees(place["facility"])
+        self._mark_unsold(self.unsold.get(place["sid"], set()))
 
     def _place(self, place_id: str, zip_code: str) -> dict[str, Any] | None:
         if place_id == self.home_address["id"]:

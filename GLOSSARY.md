@@ -152,8 +152,12 @@ _Avoid_: Udsolgt vare, OOS line, shortage
 ### Products
 
 **Product**:
-One article in the BilkaToGo assortment, identified by its Article Number. An Order Line refers to a Product.
+One article in the BilkaToGo assortment, identified by its Article Number. An Order Line refers to a Product. A Store may sell a Product that a Delivery Block keeps from the Cart's place.
 _Avoid_: Item, vare (use only as the Danish alias)
+
+**Delivery Block**:
+A Product the Store sells but that Bilka won't deliver with the Cart's delivery method; the website marks it "Kræver anden leveringsform" and Bilka refuses to add it to the Cart ("Du kan desværre ikke bestille dette produkt til …"). Both have a `blockbit`: the Product in Algolia, the Cart at its top (copied from its place) and each place in `AvailableDeliveryAddresses` (Bilka stores 0, standalone Pickup Points 43, Home Delivery 7). A Product is blocked where its `blockbit` and the place's share a bit; no bit means anything alone. Distinct from being out of stock, and from an age limit. A blocked Product already in the Cart is a Cart Line with an `unavailable_reason`, e.g. "Leveres ikke via Cleveron Container".
+_Avoid_: Unorderable, restricted product
 
 **Article Number**:
 Bilka's identifier for a Product, e.g. `19753`: what Order Lines and Cart Lines refer to and what the Cart is changed by. Bilka calls it `objectID` (and `productId` when changing the Cart, and `curatedSkuList` for the Recipe Products on a Recipe's page). Algolia's separate `article` field is not the Article Number.

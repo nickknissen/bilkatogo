@@ -34,6 +34,7 @@ async def test_products_by_article_number_come_in_the_order_asked(bilka: FakeBil
         "unitsOfMeasure",
         "productType",
         "deepestCategoryPath",
+        "blockbit",
         "storeData.1653",
     ]
     assert [(product.article_number, product.name) for product in products] == [
@@ -71,6 +72,28 @@ async def test_named_pickup_point_looks_up_its_store(bilka: FakeBilka) -> None:
     )
     assert bilka.calls("cart") == []
     assert product.store_id == "1662"
+
+
+@pytest.mark.asyncio
+async def test_products_under_a_delivery_block_are_marked_like_in_search(
+    bilka: FakeBilka,
+) -> None:
+    # 8 shares a bit with the standalone Pickup Points' `blockbit` 43; 128 shares none.
+    bilka.products[0]["blockbit"] = 8
+    bilka.products[2]["blockbit"] = 128
+    wanted = ["19753", "18381"]
+
+    at_cart = await get_products(bilka, wanted)
+    at_point = await get_products(bilka, wanted, pickup_point="Pickup Fredericia")
+    bilka.move_cart_to("Pickup Fredericia")
+    at_moved_cart = await get_products(bilka, wanted)
+
+    def deliverable(products: list[Product]) -> list[bool]:
+        return [product.deliverable for product in products]
+
+    assert deliverable(at_cart) == [True, True]
+    assert deliverable(at_point) == [False, True]
+    assert deliverable(at_moved_cart) == [False, True]
 
 
 @pytest.mark.asyncio

@@ -25,7 +25,7 @@ bilkatogo pickup-points choose --home-delivery    # move your Cart to Home Deliv
 bilkatogo pickup-slots          # the next 7 days' Pickup Slots for your Cart: open, closed or sold out
 bilkatogo pickup-slots --days 3 # today and the next 2 days
 bilkatogo pickup-slots choose 2026-11-12 16:00   # choose the Cart's Pickup Slot by date and start
-bilkatogo search skyr           # Products with Article Number, Size, Price, stock and Offer at your Cart's Store
+bilkatogo search skyr           # Products with Article Number, Size, Price, stock and Offer at your Cart's Store; "not delivered here" marks a Delivery Block
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
 bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
 bilkatogo search kaffe --on-offer --in-leaflet  # Offers and Multibuy Offers in this week's Leaflet
