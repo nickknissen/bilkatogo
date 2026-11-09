@@ -1,6 +1,8 @@
 import re
 from typing import Any
 
+from .models.cart import HOME_ADDRESS_FACILITY
+
 NAME = "Kunde Eksempel"
 EMAIL = "kunde@example.com"
 PHONE = "12345678"
@@ -105,9 +107,15 @@ def _placeholder(key: str, value: Any, home: bool, order_numbers: dict[str, str]
 
 
 def _is_home_address(data: dict[str, Any]) -> bool:
+    """An Order's `pickupzone` says so; a place in the Cart or AvailableDeliveryAddresses is
+    a Home Address by `facility` 8, a `recipient_name` or a `dawa_uid`."""
     if "home_delivery" in data:
         return bool(data["home_delivery"])
-    return bool(data.get("recipient_name"))
+    return bool(
+        data.get("facility") == HOME_ADDRESS_FACILITY
+        or data.get("recipient_name")
+        or data.get("dawa_uid")
+    )
 
 
 def _replace_in_text(data: Any, replaced: dict[str, str]) -> Any:

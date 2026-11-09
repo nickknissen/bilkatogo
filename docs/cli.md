@@ -20,6 +20,8 @@ bilkatogo orders --limit 10     # list your most recent orders
 bilkatogo order                 # show the Current Order with its details
 bilkatogo order 900000000001    # show one order by Order Number
 bilkatogo pickup-points         # list Pickup Points and their Store, * marks your Cart's
+bilkatogo pickup-points choose "Bilka Odense"     # move your Cart there and show what changed
+bilkatogo pickup-points choose --home-delivery    # move your Cart to Home Delivery
 bilkatogo pickup-slots          # the next 7 days' Pickup Slots for your Cart: open, closed or sold out
 bilkatogo pickup-slots --days 3 # today and the next 2 days
 bilkatogo pickup-slots choose 2026-11-12 16:00   # choose the Cart's Pickup Slot by date and start
@@ -69,8 +71,24 @@ Home Delivery night slot is chosen by the date it is listed under and `00:00`. A
 if two slots on that day start at the same time. It prints the chosen slot and the one it
 replaced, so you can go back while that one is still open. A slot that is closed, sold out or
 not offered fails with a message and exit 1, and the Cart keeps its slot. Choosing holds
-nothing: the slot can still sell out until you place the Order on bilkatogo.dk. The Pickup
-Point or Home Delivery is still chosen there too.
+nothing: the slot can still sell out until you place the Order on bilkatogo.dk.
+
+`pickup-points` lists only Pickup Points, never your Home Address. `pickup-points choose NAME`
+moves your Cart to a Pickup Point, and `pickup-points choose --home-delivery` to Home Delivery,
+without asking, like `cart add`. Your Cart Lines then follow that Store's Prices, Offers and
+stock, and `search` and `pickup-slots` use it. It prints what changed, before and after: the
+place, the Store, the Cart total, Service Fee, Packaging and Delivery Fee, and the Minimum
+Order for Home Delivery. Then come warnings for Cart Lines Bilka can't supply there (Bilka
+keeps them in the Cart, marked unavailable with its reason) and for a chosen Pickup Slot that
+is closed at the new place, plus the lines available again. Fix those before you order. It
+never prints your Home Address, only "Home Delivery". `--json` gives the whole report: the
+Cart `before` and `after`, `unavailable`, `available_again`, `gone` and `pickup_slot_closed`.
+An unknown name fails with a message and exit 1, and the Cart stays.
+
+Bilka shows your Home Address only while the Cart is on Home Delivery, so choose Home Delivery
+once on bilkatogo.dk. The next command that reads the Cart or the Pickup Points remembers it
+(its id and zip code, in the session file), and from then on `choose --home-delivery` works.
+Until then it fails and says so.
 
 Every command accepts `--json` for machine-readable output.
 

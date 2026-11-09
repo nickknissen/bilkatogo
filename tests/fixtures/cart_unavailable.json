@@ -1,0 +1,129 @@
+{
+  "stat": {
+    "amount": 13,
+    "price": 7710,
+    "prod_amount": 12,
+    "prod_price": 3200,
+    "promo": 0,
+    "deposit": 0,
+    "delivery_price": 0,
+    "is_member": 1,
+    "membership_offer_discount": 0,
+    "personalized_offer_discount": 0,
+    "packing": 3900,
+    "packaging_price": 0,
+    "vouchers": [],
+    "minimum_left": 0,
+    "minimum_left_text": "",
+    "specifications": [
+      {"text": "Pakkeservice", "value": 3900},
+      {"text": "Emballage", "value": 0}
+    ]
+  },
+  "lines": [
+    {
+      "headline": "Services",
+      "type": "",
+      "lines": [
+        {
+          "orderlines": [
+            {
+              "quantity": 1,
+              "amount": 3900,
+              "unitprice": 3900,
+              "unavailable_reason": "",
+              "product": {"objectID": 81474, "name": "Pakkeservice", "price": 3900}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "headline": "Frugt & grønt",
+      "type": "",
+      "lines": [
+        {
+          "orderlines": [
+            {
+              "quantity": 10,
+              "amount": 2500,
+              "unitprice": 250,
+              "unavailable_reason": "",
+              "product": {"objectID": 18381, "name": "Bananer", "price": 275}
+            }
+          ]
+        },
+        {
+          "orderlines": [
+            {
+              "quantity": 1,
+              "amount": 700,
+              "unitprice": 700,
+              "unavailable_reason": "",
+              "product": {"objectID": 18364, "name": "Agurk", "price": 700}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "headline": "Ikke tilgængeligt",
+      "type": "",
+      "lines": [
+        {
+          "orderlines": [
+            {
+              "quantity": 1,
+              "amount": 610,
+              "unitprice": 610,
+              "unavailable_reason": "Udsolgt",
+              "product": {"objectID": 75191, "name": "Mini Mix", "price": 610}
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "messages": [],
+  "hd_available": true,
+  "missing_hd_address": false,
+  "blockbit": 0,
+  "deliveryAddress": {
+    "id": "16230",
+    "dawa_uid": null,
+    "name": "Bilka Kolding",
+    "address": "Skovvangen 40-42, 6000 Kolding",
+    "street": "Skovvangen 40-42",
+    "zip": "6000",
+    "city": "Kolding",
+    "sid": "1662",
+    "lat": "55.5119487",
+    "lng": "9.4591165",
+    "recipient_name": "",
+    "facility": 3,
+    "minimum_buy": 0,
+    "blockbit": 0,
+    "nextAvailableDeliveryDate": "2026-11-09",
+    "currentDeliveryDate": "2026-11-11",
+    "missing_hd_address": false,
+    "accessconditions_required": false,
+    "hd_available": false,
+    "temporary_zipcode": null
+  },
+  "deliveryDate": {
+    "displayDeliveryDate": "2026-11-11",
+    "deliveryDate": "2026-11-11",
+    "deliveryDay": "Ons",
+    "intervalStart": "14:00",
+    "intervalEnd": "16:00",
+    "closed": 0,
+    "customer_chosen_pickupzone": "1",
+    "message": "",
+    "order_id": "",
+    "delivery_message": "Ons. 11/11. kl. 14:00 - 16:00"
+  },
+  "eid": -1,
+  "uid": 900001,
+  "tid": "00000000-0000-0000-0000-000000000000",
+  "info_object": null
+}

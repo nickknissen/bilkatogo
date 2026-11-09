@@ -113,8 +113,9 @@ async def test_home_delivery_cart_has_no_pickup_point_but_a_store(
     [
         {"dawa_uid": None},
         {"recipient_name": "", "dawa_uid": "0a3f50a0-0000-0000-0000-000000000000"},
+        {"recipient_name": "", "dawa_uid": ""},
     ],
-    ids=["by_name", "by_dawa_uid"],
+    ids=["by_name", "by_dawa_uid", "by_facility"],
 )
 async def test_either_home_address_field_marks_home_delivery(
     home_delivery_cart: FakeBilka, marker: dict
@@ -256,6 +257,21 @@ async def test_cart_without_a_pickup_point_has_none(logged_in_cart: FakeBilka) -
     cart = await fetch(logged_in_cart)
 
     assert cart.pickup_point is None
+
+
+@pytest.mark.asyncio
+async def test_cart_lines_bilka_marks_unavailable_are_kept_with_the_reason(
+    bilka: FakeBilka,
+) -> None:
+    bilka.cart_contents = load_fixture("cart_unavailable.json")
+
+    cart = await fetch(bilka)
+
+    assert [(line.article_number, line.unavailable_reason) for line in cart.lines] == [
+        ("18381", None),
+        ("18364", None),
+        ("75191", "Udsolgt"),
+    ]
 
 
 @pytest.mark.asyncio

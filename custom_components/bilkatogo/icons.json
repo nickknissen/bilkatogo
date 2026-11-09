@@ -62,6 +62,12 @@
     },
     "choose_pickup_slot": {
       "service": "mdi:calendar-clock"
+    },
+    "choose_pickup_point": {
+      "service": "mdi:store-marker"
+    },
+    "choose_home_delivery": {
+      "service": "mdi:truck-delivery"
     }
   }
 }

@@ -227,7 +227,7 @@
       "message": "Bilka ændrede ikke kurven: {error}"
     },
     "no_pickup_point": {
-      "message": "Din kurv har hverken et afhentningssted eller en leveringsadresse. Vælg først en af dem på bilkatogo.dk."
+      "message": "Din kurv har hverken et afhentningssted eller en leveringsadresse. Vælg først en af dem med handlingen Vælg afhentningssted eller på bilkatogo.dk."
     },
     "action_failed": {
       "message": "Bilka kunne ikke gennemføre handlingen: {error}"
@@ -249,6 +249,12 @@
     },
     "pickup_slot_ambiguous": {
       "message": "Flere afhentningstidspunkter den {date} starter kl. {start}. Angiv også sluttidspunktet."
+    },
+    "unknown_pickup_point": {
+      "message": "Bilka har intet afhentningssted ved navn {pickup_point} til din kurv. Din kurv bliver, hvor den er."
+    },
+    "no_home_address": {
+      "message": "Din adresse til hjemmelevering kendes ikke endnu. Vælg hjemmelevering én gang på bilkatogo.dk, og prøv så igen."
     }
   },
   "selector": {
@@ -374,6 +380,30 @@
         "end": {
           "name": "Slut",
           "description": "Hvornår afhentningstidspunktet slutter. Kun nødvendig, hvis to tidspunkter starter samtidig."
+        }
+      }
+    },
+    "choose_pickup_point": {
+      "name": "Vælg afhentningssted",
+      "description": "Flytter din BilkaToGo-kurv til et andet afhentningssted og returnerer, hvad det ændrede: varehuset, totalen og gebyrerne, varer varehuset ikke kan levere, og om dit afhentningstidspunkt stadig er åbent.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
+        },
+        "pickup_point": {
+          "name": "Afhentningssted",
+          "description": "Afhentningsstedets navn, som bilkatogo.dk viser det, f.eks. Bilka Odense."
+        }
+      }
+    },
+    "choose_home_delivery": {
+      "name": "Vælg hjemmelevering",
+      "description": "Flytter din BilkaToGo-kurv til hjemmelevering på din adresse og returnerer, hvad det ændrede, med leveringsgebyr og minimumskøb. Vælg hjemmelevering én gang på bilkatogo.dk først, så din adresse kendes.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
         }
       }
     }

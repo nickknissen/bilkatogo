@@ -5,6 +5,7 @@ import pytest
 from typer.testing import CliRunner
 
 from bilkatogo.cli import app
+from bilkatogo.redact import redact
 from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka, load_fixture
 
 
@@ -231,3 +232,24 @@ def test_redacted_home_delivery_cart_replaces_another_name_and_temporary_zip_cod
     address = json.loads(result.output)["deliveryAddress"]
     assert address["name"] == "Kunde Eksempel"
     assert address["temporary_zipcode"] == "9999"
+
+
+def test_a_home_address_marked_only_by_its_facility_is_redacted() -> None:
+    # Captured 2026-11-09 (#89): Bilka's Home Address entry in AvailableDeliveryAddresses can
+    # have an empty `dawa_uid`; `facility` 8 is what always marks it.
+    entry = {
+        "id": "185595",
+        "dawa_uid": "",
+        "name": "Bo Beboersen",
+        "zip": "5230",
+        "temporary_zipcode": "5230",
+        "recipient_name": "",
+        "facility": 8,
+    }
+
+    redacted = redact({"addresses": [entry], "activeAddress": entry})
+
+    for address in (redacted["activeAddress"], *redacted["addresses"]):
+        assert address["name"] == "Kunde Eksempel"
+        assert (address["zip"], address["temporary_zipcode"]) == ("9999", "9999")
+        assert address["id"] == "185595"

@@ -22,6 +22,17 @@ ALGOLIA_SEARCH_KEY = "1deaf41c87e729779f7695c00f190cc9"
 ALGOLIA_INDEX = "prod_BILKATOGO_PRODUCTS"
 UID = 900001
 DANISH_WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"]
+UNAVAILABLE_GROUP = "Ikke tilgængeligt"
+# What Bilka charged where the Cart was moved on 2026-11-09, by `facility`: the Delivery Fee
+# and Packaging, in øre. A Bilka store charges neither.
+FEES_BY_FACILITY = {3: (0, 0), 5: (1900, 500), 8: (3900, 0)}
+DELIVERY_FEE_LINE = {
+    "quantity": 1,
+    "amount": 0,
+    "unitprice": 0,
+    "unavailable_reason": "",
+    "product": {"objectID": 119085, "name": "Leveringsgebyr", "price": 0},
+}
 
 # Without a valid JWT Bilka answers shop calls with HTTP 200 and `uid: -1` (captured 2026-11-02).
 LOGGED_OUT = {"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}
@@ -48,6 +59,7 @@ ROUTES: dict[tuple[str, str], str] = {
         "https://api.bilkatogo.dk/api/shop/v3/AvailableDeliveryDates",
     ): "available_delivery_dates",
     ("GET", "https://api.bilkatogo.dk/api/shop/v3/SetDeliveryDate"): "set_delivery_date",
+    ("GET", "https://api.bilkatogo.dk/api/shop/v6/SetDeliveryAddress"): "set_delivery_address",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/ChangeLineCount"): "change_line_count",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/EmptyCart"): "empty_cart",
     ("POST", "https://f9vbjlr1bk-dsn.algolia.net/1/indexes/*/queries"): "algolia",
@@ -121,6 +133,13 @@ class FakeBilka:
             )
         }
         self.delivery_addresses: dict[str, Any] = load_fixture("available_delivery_addresses.json")
+        # The account's Home Address, which SetDeliveryAddress accepts even while it is not
+        # listed, and the Article Numbers each Store does not sell.
+        self.home_address: dict[str, Any] = load_fixture("cart_home.json")["deliveryAddress"]
+        self.unsold: dict[str, set[str]] = {}
+        # Where the Cart's chosen Pickup Slot is offered: the place it starts at, by default.
+        self.slot_offered_at: set[str] | None = None
+        self._headlines: dict[str, str] = {}
         self.cart_contents: dict[str, Any] = load_fixture("cart.json")
         self.stored_carts: dict[str, dict[str, Any]] = {}
         self.products: list[dict[str, Any]] = load_fixture("algolia_products.json")["hits"]
@@ -221,9 +240,17 @@ class FakeBilka:
         return httpx.Response(200, json=details)
 
     def available_delivery_addresses(self, request: httpx.Request) -> httpx.Response:
+        """The places the Cart can go. Like Bilka, the account's Home Address is listed only
+        while the Cart is on Home Delivery, and `activeAddress` is the Cart's place (captured
+        2026-11-09)."""
         if not self.has_shop_session(request):
             return httpx.Response(200, json={**self.delivery_addresses, "uid": -1})
-        return httpx.Response(200, json={**self.delivery_addresses, "uid": UID})
+        listing = copy.deepcopy(self.delivery_addresses)
+        if active := self.cart_contents.get("deliveryAddress"):
+            listing["activeAddress"] = copy.deepcopy(active)
+            if is_home_delivery(active):
+                listing["addresses"].append(copy.deepcopy(active))
+        return httpx.Response(200, json={**listing, "uid": UID})
 
     def cart(self, request: httpx.Request) -> httpx.Response:
         if not self.has_shop_session(request):
@@ -275,6 +302,102 @@ class FakeBilka:
             "lines": self.cart_contents["lines"],
         }
         return httpx.Response(200, json=answer)
+
+    def set_delivery_address(self, request: httpx.Request) -> httpx.Response:
+        """Moves the Cart to a Pickup Point or the Home Address by `id`, as captured on
+        2026-11-09: the Store, fees and Minimum Order follow the place, Cart Lines the Store
+        does not sell are kept under "Ikke tilgængeligt", and the chosen Pickup Slot is kept,
+        closed where it is not offered. An `id` Bilka does not know is refused with `eid` 406
+        and the Cart stays."""
+        # Bilka's answer to a logged-out SetDeliveryAddress was not captured.
+        if not self.has_shop_session(request):
+            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
+        params = request.url.params
+        place = self._place(params["id"], params.get("zipcode", ""))
+        if place is None:
+            return httpx.Response(200, json=load_fixture("set_delivery_address_unknown.json"))
+        cart = self.cart_contents
+        if self.slot_offered_at is None:
+            self.slot_offered_at = {str((cart.get("deliveryAddress") or {}).get("id"))}
+        cart["deliveryAddress"] = place
+        cart["blockbit"] = place["blockbit"]
+        if cart.get("deliveryDate"):
+            cart["deliveryDate"]["closed"] = 0 if place["id"] in self.slot_offered_at else 1
+        self._charge_fees(place["facility"])
+        self._mark_unsold(self.unsold.get(place["sid"], set()))
+        answer = {
+            **load_fixture("set_delivery_address.json"),
+            "activeAddress": copy.deepcopy(place),
+        }
+        return httpx.Response(200, json=answer)
+
+    def _place(self, place_id: str, zip_code: str) -> dict[str, Any] | None:
+        if place_id == self.home_address["id"]:
+            # Bilka keeps the zip code sent as the Home Address's `temporary_zipcode`.
+            return {**copy.deepcopy(self.home_address), "temporary_zipcode": zip_code}
+        for address in self.delivery_addresses["addresses"]:
+            if address["id"] == place_id:
+                return copy.deepcopy(address)
+        return None
+
+    def _charge_fees(self, facility: int) -> None:
+        stat = self.cart_contents["stat"]
+        delivery_fee, packaging = FEES_BY_FACILITY[facility]
+        stat["price"] += (
+            delivery_fee
+            - (stat.get("delivery_price") or 0)
+            + packaging
+            - (stat.get("packaging_price") or 0)
+        )
+        stat.update(delivery_price=delivery_fee, packaging_price=packaging)
+        groups: list[dict[str, Any]] = self.cart_contents["lines"]
+        services: dict[str, Any] | None = next(
+            (group for group in groups if group["headline"] == "Services"), None
+        )
+        if services is None:
+            services = {"headline": "Services", "type": "", "lines": []}
+            groups.insert(0, services)
+        blocks: list[dict[str, Any]] = [
+            block
+            for block in services["lines"]
+            if not any(line["product"]["name"] == "Leveringsgebyr" for line in block["orderlines"])
+        ]
+        if delivery_fee:
+            line = copy.deepcopy(DELIVERY_FEE_LINE)
+            line.update(amount=delivery_fee, unitprice=delivery_fee)
+            line["product"]["price"] = delivery_fee
+            blocks.append({"orderlines": [line]})
+        services["lines"] = blocks
+
+    def _mark_unsold(self, unsold: set[str]) -> None:
+        """Puts the Cart Lines in `unsold` under "Ikke tilgængeligt" with Bilka's reason, and
+        the others back under their own headline."""
+        fees, lines = [], []
+        for group in self.cart_contents["lines"]:
+            if group["headline"] in FEE_GROUPS:
+                fees.append(group)
+                continue
+            for block in group["lines"]:
+                for line in block["orderlines"]:
+                    article_number = str(line["product"]["objectID"])
+                    if group["headline"] != UNAVAILABLE_GROUP:
+                        self._headlines[article_number] = group["headline"]
+                    lines.append(line)
+        groups: dict[str, dict[str, Any]] = {}
+        for line in lines:
+            article_number = str(line["product"]["objectID"])
+            line["unavailable_reason"] = "Udsolgt" if article_number in unsold else ""
+            headline = (
+                UNAVAILABLE_GROUP if article_number in unsold else self._headlines[article_number]
+            )
+            group = groups.setdefault(headline, {"headline": headline, "type": "", "lines": []})
+            group["lines"].append({"orderlines": [line]})
+        unavailable = groups.pop(UNAVAILABLE_GROUP, None)
+        self.cart_contents["lines"] = [
+            *fees,
+            *groups.values(),
+            *([unavailable] if unavailable else []),
+        ]
 
     def _is_open(self, day: str, start: str, end: str) -> bool:
         for day_data in self._slot_listing()["availableIntervals"]:

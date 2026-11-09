@@ -227,7 +227,7 @@
       "message": "Bilka did not change the cart: {error}"
     },
     "no_pickup_point": {
-      "message": "Your cart has no pickup point or home delivery address. Choose one on bilkatogo.dk first."
+      "message": "Your cart has no pickup point or home delivery address. Choose one with the Choose pickup point action or on bilkatogo.dk first."
     },
     "action_failed": {
       "message": "Bilka could not complete the action: {error}"
@@ -249,6 +249,12 @@
     },
     "pickup_slot_ambiguous": {
       "message": "Several pickup slots on {date} start at {start}. Give the end time too."
+    },
+    "unknown_pickup_point": {
+      "message": "Bilka has no pickup point named {pickup_point} for your cart. Your cart stays where it is."
+    },
+    "no_home_address": {
+      "message": "Your home address for home delivery is not known yet. Choose home delivery once on bilkatogo.dk, then try again."
     }
   },
   "selector": {
@@ -374,6 +380,30 @@
         "end": {
           "name": "End",
           "description": "When the pickup slot ends. Only needed when two slots start at the same time."
+        }
+      }
+    },
+    "choose_pickup_point": {
+      "name": "Choose pickup point",
+      "description": "Moves your BilkaToGo cart to another pickup point and returns what that changed: the store, total and fees, products the store can't supply, and whether your pickup slot is still open.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The BilkaToGo account to use. Only needed when more than one is added."
+        },
+        "pickup_point": {
+          "name": "Pickup point",
+          "description": "The pickup point's name, as bilkatogo.dk shows it, e.g. Bilka Odense."
+        }
+      }
+    },
+    "choose_home_delivery": {
+      "name": "Choose home delivery",
+      "description": "Moves your BilkaToGo cart to home delivery at your home address and returns what that changed, with the delivery fee and minimum order. Choose home delivery once on bilkatogo.dk first, so that your home address is known.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The BilkaToGo account to use. Only needed when more than one is added."
         }
       }
     }

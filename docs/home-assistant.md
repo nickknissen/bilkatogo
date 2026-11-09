@@ -106,6 +106,26 @@ Order Status sensor shows the status.
 | `bilkatogo.search` | `query`, `limit` (default 10), `in_stock`, `on_offer`, `in_leaflet` (default false), `sort` (`relevance`, `price`, `unit_price`) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
 | `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
 | `bilkatogo.choose_pickup_slot` | `date`, `start`, `end` (only when two slots start at the same time) | Optional: `chosen` and `replaced` (each `starts_at` and `ends_at`; `replaced` is `null` when the Cart had no slot ahead) and `changed` (`false` when the slot was already chosen) |
+| `bilkatogo.choose_pickup_point` | `pickup_point`: the name, e.g. Bilka Odense | Optional: what the move changed (see below) |
+| `bilkatogo.choose_home_delivery` | none | Optional: what the move changed (see below) |
+
+`choose_pickup_point` moves your Cart to a Pickup Point and `choose_home_delivery` to Home
+Delivery at your Home Address. The Cart Lines then follow that Store's Prices, Offers and
+stock, and `search`, `add_to_cart` and the Pickup Slots use it. The response has `before` and
+`after`, each with `pickup_point` (the name, `null` for Home Delivery), `home_delivery`,
+`store_id`, `total`, `service_fee`, `packaging` and `delivery_fee`. It also has
+`minimum_order` (Home Delivery's Minimum Order, `null` for pickup) and `unavailable`, the
+products Bilka can't supply there, each with Bilka's `reason` (it keeps them in the Cart).
+Then come `available_again`, `gone`, the Cart's `pickup_slot` with `pickup_slot_closed` when
+the new place doesn't offer it, and `changed` (`false` when the Cart was there already).
+Fix unavailable products and a closed slot before you order; `choose_pickup_slot` is the
+next step. An unknown Pickup Point fails with a message, and the Cart stays. Afterwards the
+integration updates its entities. The response never holds your Home Address.
+
+Bilka shows your Home Address only while the Cart is on Home Delivery, so choose Home Delivery
+once on bilkatogo.dk. The integration remembers it (its id and zip code, with the session)
+the next time it reads the Cart, e.g. with `get_cart`, and from then on `choose_home_delivery`
+works. Until then it fails and asks you to do that.
 
 `choose_pickup_slot` chooses one of the open Pickup Slots in the next 14 days for your Cart,
 for its Pickup Point or Home Delivery. A Home Delivery night slot is chosen by the date it is
@@ -113,8 +133,7 @@ listed under, starting at 00:00. Choosing holds nothing: the slot can still sell
 place the Order on bilkatogo.dk. A slot you give up can sell out too, so the response names the
 slot it replaced. A closed, sold-out or unknown slot, or one Bilka refuses, fails with a
 message saying so, and the Cart keeps its slot. Afterwards the integration updates its
-entities, so Next available pickup slot follows. The Pickup Point or Home Delivery is still
-chosen on bilkatogo.dk.
+entities, so Next available pickup slot follows.
 
 `add_to_cart` adds to what is already in the Cart and `remove_from_cart` takes `quantity` off
 it, or the whole Cart Line without one; neither places an Order. In the Cart response
@@ -122,7 +141,7 @@ it, or the whole Cart Line without one; neither places an Order. In the Cart res
 your home address); `pickup_slot` has `starts_at` and `ends_at`, `null` when none is chosen or
 the chosen one has passed; `minimum_order` is `null` when Bilka sets none, as for pickup; and
 `warnings` includes how far the Cart is from the Minimum Order. `search` searches at the Store
-serving the Cart, for pickup or Home Delivery, so choose either on bilkatogo.dk first. `sort`
+serving the Cart, for pickup or Home Delivery, so choose either first. `sort`
 orders the `limit` best matches by what one costs now, the Offer Price where there is one; it
 does not search the whole assortment for the cheapest. With more than one account added, pass
 `config_entry_id`. A script that searches and adds the first hit:
@@ -255,9 +274,11 @@ automation:
 - The Pickup Code, Substitutions, Missing Items and the Order Total breakdown are only known
   once the order is packed.
 - The Home Delivery address is left out of entities and the calendar, as it is personal.
-- `add_to_cart` and `search` need a Pickup Point chosen on bilkatogo.dk. The actions change
-  the Cart, its Cart Lines and Pickup Slot, but the Pickup Point is still chosen on
-  bilkatogo.dk. The integration never places, changes or cancels an order.
+- `add_to_cart` and `search` need a Pickup Point or Home Delivery chosen. The actions change
+  the Cart: its Cart Lines, Pickup Slot and Pickup Point or Home Delivery. The integration
+  never places, changes or cancels an order, and never enters or edits an address.
+- Home Delivery can only be chosen once you have chosen it on bilkatogo.dk and the
+  integration has read the Cart since.
 
 ## Troubleshooting
 
@@ -270,8 +291,10 @@ automation:
 - **The Order Status is Unknown.** Bilka sent a status the integration does not know. Open an
   [issue](https://github.com/nickknissen/bilkatogo/issues) with the Bilka status code from the
   attribute.
-- **`search` or `add_to_cart` fails with "no pickup point".** Choose a Pickup Point on
-  bilkatogo.dk, then try again.
+- **`search` or `add_to_cart` fails with "no pickup point".** Choose a Pickup Point with
+  `choose_pickup_point` or on bilkatogo.dk, then try again.
+- **`choose_home_delivery` fails because the home address is not known.** Choose Home
+  Delivery once on bilkatogo.dk, call `get_cart`, then try again.
 
 For more detail in the log, select **Enable debug logging** on the integration's page,
 reproduce the problem, then disable it again; Home Assistant then downloads the log. Or add this

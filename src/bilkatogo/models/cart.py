@@ -11,6 +11,9 @@ from .money import discount, kroner
 from .order import PickupPoint, PickupSlot
 
 FEE_GROUPS = frozenset({"Emballage", "Services"})
+# Bilka's `facility` on a place: 3 a Bilka store, 5 a standalone Pickup Point, 8 a Home Address.
+PICKUP_POINT_FACILITIES = frozenset({3, 5})
+HOME_ADDRESS_FACILITY = 8
 
 
 @dataclass
@@ -20,6 +23,9 @@ class CartLine(BilkaDataClass):
     quantity: int
     price: Decimal
     line_total: Decimal
+    unavailable_reason: str | None = None
+    """Why Bilka can't supply the line where the Cart is now received, e.g. "Udsolgt"; None
+    while it can. Bilka keeps such a line in the Cart, under "Ikke tilgængeligt"."""
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
@@ -32,7 +38,12 @@ class CartLine(BilkaDataClass):
             quantity=int(data.get("quantity") or 0),
             price=kroner(product.get("price")),
             line_total=kroner(data.get("amount")),
+            unavailable_reason=data.get("unavailable_reason") or None,
         )
+
+    @property
+    def available(self) -> bool:
+        return self.unavailable_reason is None
 
 
 @dataclass
@@ -57,6 +68,9 @@ class Cart(BilkaDataClass):
     pickup_slot: PickupSlot | None
     """The Pickup Slot chosen in the Cart, while it lies ahead. Bilka keeps the last Order's
     slot in the Cart for weeks after it ended."""
+    pickup_slot_closed: bool = False
+    """Whether Bilka marks the chosen Pickup Slot closed, as when the Cart moved to a place that
+    does not offer it; False without a Pickup Slot."""
     warnings: list[str] = field(default_factory=list)
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
@@ -64,6 +78,8 @@ class Cart(BilkaDataClass):
     def from_dict(cls, data: dict[str, Any]) -> Cart:
         stat = data.get("stat") or {}
         address = data.get("deliveryAddress") or {}
+        slot_data = data.get("deliveryDate") or {}
+        pickup_slot = _upcoming_slot(slot_data)
         return cls(
             _raw=data,
             lines=[
@@ -85,7 +101,8 @@ class Cart(BilkaDataClass):
             minimum_order=kroner(address.get("minimum_buy")) or None,
             minimum_left=kroner(stat.get("minimum_left")),
             next_available_date=_date(address.get("nextAvailableDeliveryDate")),
-            pickup_slot=_upcoming_slot(data.get("deliveryDate")),
+            pickup_slot=pickup_slot,
+            pickup_slot_closed=pickup_slot is not None and bool(slot_data.get("closed")),
             warnings=_cart_warnings(data, stat),
         )
 
@@ -117,12 +134,26 @@ def _date(value: Any) -> date | None:
 
 
 def is_home_delivery(address: dict[str, Any] | None) -> bool:
-    """Whether the Cart's `deliveryAddress` is the customer's home rather than a Pickup Point.
+    """Whether a place, the Cart's `deliveryAddress` or an `AvailableDeliveryAddresses` entry,
+    is a Home Address rather than a Pickup Point.
 
     Not by a name starting with "Bilka": standalone Pickup Points are named e.g. "Pickup
     Fredericia".
     """
-    return bool(address and (address.get("dawa_uid") or address.get("recipient_name")))
+    return bool(
+        address
+        and (
+            address.get("facility") == HOME_ADDRESS_FACILITY
+            or address.get("dawa_uid")
+            or address.get("recipient_name")
+        )
+    )
+
+
+def is_pickup_point(address: dict[str, Any]) -> bool:
+    """Whether an `AvailableDeliveryAddresses` entry is a Pickup Point: a Bilka store or a
+    standalone point."""
+    return address.get("facility") in PICKUP_POINT_FACILITIES and not is_home_delivery(address)
 
 
 def cart_store_id(address: dict[str, Any] | None) -> str | None:

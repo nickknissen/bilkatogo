@@ -4,6 +4,8 @@ from .cart import CartChange as CartChange
 from .cart import CartChanges as CartChanges
 from .cart import CartChangeStatus as CartChangeStatus
 from .cart import CartLine as CartLine
+from .delivery import DeliveryChange as DeliveryChange
+from .delivery import HomeAddress as HomeAddress
 from .order import Order as Order
 from .order import OrderHistory as OrderHistory
 from .order import OrderStatus as OrderStatus
