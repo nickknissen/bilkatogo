@@ -1,3 +1,5 @@
+"""Tests for the BilkaToGo actions."""
+
 from typing import Any
 
 import httpx
@@ -26,6 +28,7 @@ ACTIONS = [
 
 @pytest.fixture
 def cart(bilka: FakeBilka) -> FakeBilka:
+    """Return the fake Bilka with a Cart of five Cart Lines at Bilka Vejle."""
     bilka.cart_contents = load_fixture("cart_logged_in.json")
     return bilka
 
@@ -33,6 +36,7 @@ def cart(bilka: FakeBilka) -> FakeBilka:
 async def call(
     hass: HomeAssistant, action: str, data: dict[str, Any], *, return_response: bool = True
 ) -> Any:
+    """Call a BilkaToGo action and return its response."""
     return await hass.services.async_call(
         DOMAIN, action, data, blocking=True, return_response=return_response
     )
@@ -41,6 +45,7 @@ async def call(
 async def test_add_to_cart_adds_to_an_existing_cart_line_and_returns_the_cart(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test adding a Product already in the Cart raises its quantity and returns the Cart."""
     await setup_integration()
 
     response = await call(hass, "add_to_cart", {"article_number": "18381", "quantity": 2})
@@ -74,6 +79,8 @@ async def test_add_to_cart_adds_to_an_existing_cart_line_and_returns_the_cart(
 
 @pytest.fixture
 def no_pauses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Skip the client's pauses between Cart changes."""
+
     async def sleep(seconds: float) -> None:
         pass
 
@@ -84,6 +91,7 @@ def no_pauses(monkeypatch: pytest.MonkeyPatch) -> None:
 async def test_add_items_to_cart_adds_each_and_returns_the_results_and_cart(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test adding several items merges repeats and returns each change with the Cart."""
     await setup_integration()
 
     response = await call(
@@ -124,6 +132,7 @@ async def test_add_items_to_cart_adds_each_and_returns_the_results_and_cart(
 async def test_add_items_to_cart_reports_a_rejected_item_and_adds_the_rest(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test an item Bilka refuses is reported with its message while the others are added."""
     await setup_integration()
     cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
 
@@ -143,6 +152,7 @@ async def test_add_items_to_cart_reports_a_rejected_item_and_adds_the_rest(
 async def test_add_items_to_cart_fails_when_none_was_added(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test the action fails with Bilka's reasons when no item could be added."""
     await setup_integration()
     cart.script("change_line_count", load_fixture("change_line_count_unavailable.json"))
 
@@ -162,6 +172,7 @@ async def test_add_items_to_cart_fails_when_none_was_added(
 async def test_add_items_to_cart_refuses_malformed_items(
     hass: HomeAssistant, setup_integration: SetupIntegration, items: list[dict[str, Any]]
 ) -> None:
+    """Test an empty item list, an item without an Article Number or a zero quantity is refused."""
     await setup_integration()
 
     with pytest.raises(probatio.Invalid):
@@ -171,6 +182,7 @@ async def test_add_items_to_cart_refuses_malformed_items(
 async def test_add_to_cart_creates_a_cart_line_and_returns_nothing_unless_asked(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test adding a new Product creates a Cart Line of one and returns no response by default."""
     await setup_integration()
 
     response = await call(hass, "add_to_cart", {"article_number": "19753"}, return_response=False)
@@ -183,6 +195,7 @@ async def test_add_to_cart_creates_a_cart_line_and_returns_nothing_unless_asked(
 async def test_a_rejected_change_carries_bilkas_message(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test a Cart change Bilka limits fails with Bilka's own message."""
     await setup_integration()
     cart.max_quantity = 2
     cart.change_answer = {
@@ -201,6 +214,7 @@ async def test_a_rejected_change_carries_bilkas_message(
 async def test_quantity_must_be_at_least_one(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka, action: str
 ) -> None:
+    """Test a quantity of zero is refused without changing the Cart."""
     await setup_integration()
 
     with pytest.raises(probatio.Invalid):
@@ -212,6 +226,7 @@ async def test_quantity_must_be_at_least_one(
 async def test_remove_from_cart_takes_a_quantity_off_and_returns_the_cart(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test removing a quantity lowers the Cart Line by that much and returns the Cart."""
     await setup_integration()
 
     response = await call(hass, "remove_from_cart", {"article_number": "18381", "quantity": 3})
@@ -224,6 +239,7 @@ async def test_remove_from_cart_takes_a_quantity_off_and_returns_the_cart(
 async def test_remove_from_cart_without_a_quantity_drops_the_cart_line(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test removing without a quantity takes the whole Cart Line out of the Cart."""
     await setup_integration()
 
     response = await call(
@@ -241,6 +257,7 @@ async def test_get_cart_returns_the_cart_without_changing_it(
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test get_cart returns the Cart Lines, totals and Pickup Slot without changing the Cart."""
     freezer.move_to("2026-10-30T12:00:00+01:00")
     await setup_integration()
 
@@ -287,6 +304,7 @@ async def test_get_cart_for_home_delivery_leaves_out_the_address(
     home_delivery_cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a Home Delivery Cart reports its Minimum Order but none of the Home Address."""
     freezer.move_to("2026-11-08T12:00:00+01:00")
     await setup_integration()
 
@@ -317,6 +335,7 @@ async def test_get_cart_for_home_delivery_leaves_out_the_address(
 async def test_search_returns_products_at_the_carts_store(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test search returns Products with their Prices and Offers at the Cart's Store."""
     await setup_integration()
 
     response = await call(hass, "search", {"query": "skyr"})
@@ -364,6 +383,7 @@ async def test_search_returns_products_at_the_carts_store(
 async def test_search_marks_products_not_delivered_to_the_carts_place(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test a Product with a Delivery Block at the Cart's Pickup Point is not deliverable."""
     # 8 shares a bit with the standalone Pickup Points' `blockbit` 43.
     bilka.products[0]["blockbit"] = 8
     bilka.move_cart_to("Pickup Fredericia")
@@ -377,6 +397,7 @@ async def test_search_marks_products_not_delivered_to_the_carts_place(
 async def test_search_returns_the_offer_end_date_and_multibuy_offer(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test search reports when an Offer ends and a Product's Multibuy Offer."""
     await setup_integration()
 
     chicken = await call(hass, "search", {"query": "kyllingebrystfilet"})
@@ -396,6 +417,7 @@ async def test_search_returns_the_offer_end_date_and_multibuy_offer(
 async def test_search_limit_caps_the_number_of_products(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test search returns no more Products than the limit."""
     await setup_integration()
 
     response = await call(hass, "search", {"query": "skyr", "limit": 1})
@@ -406,6 +428,7 @@ async def test_search_limit_caps_the_number_of_products(
 async def test_search_filters_and_sorts(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test search keeps only Products in stock and on Offer, sorted by Price."""
     await setup_integration()
 
     response = await call(
@@ -422,6 +445,7 @@ async def test_search_filters_and_sorts(
 async def test_search_in_leaflet(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test search can be limited to Products in this week's Leaflet."""
     await setup_integration()
 
     response = await call(hass, "search", {"query": "e", "in_leaflet": True})
@@ -435,6 +459,7 @@ async def test_search_in_leaflet(
 async def test_search_with_an_unknown_sort_is_refused(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test search refuses a sort order it does not know."""
     await setup_integration()
 
     with pytest.raises(probatio.Invalid):
@@ -444,6 +469,7 @@ async def test_search_with_an_unknown_sort_is_refused(
 async def test_search_without_a_pickup_point_asks_to_choose_one(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test search fails before searching when the Cart has no Pickup Point."""
     await setup_integration()
     bilka.cart_contents = {**bilka.cart_contents, "deliveryAddress": None}
 
@@ -458,6 +484,7 @@ async def test_search_without_a_pickup_point_asks_to_choose_one(
 async def test_one_entry_needs_no_config_entry_id(
     hass: HomeAssistant, setup_integration: SetupIntegration, action: str, data: dict[str, Any]
 ) -> None:
+    """Test each action works without a config entry ID when only one entry is set up."""
     await setup_integration()
 
     assert await call(hass, action, data)
@@ -467,6 +494,7 @@ async def test_one_entry_needs_no_config_entry_id(
 async def test_several_entries_need_a_config_entry_id(
     hass: HomeAssistant, setup_integration: SetupIntegration, action: str, data: dict[str, Any]
 ) -> None:
+    """Test each action needs a config entry ID once more than one entry is loaded."""
     other = MockConfigEntry(
         domain=DOMAIN,
         title="anden@example.com",
@@ -487,6 +515,7 @@ async def test_several_entries_need_a_config_entry_id(
 async def test_an_unknown_config_entry_id_is_rejected(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test an action refuses a config entry ID that does not exist."""
     await setup_integration()
 
     with pytest.raises(ServiceValidationError) as unknown:
@@ -498,6 +527,7 @@ async def test_an_unknown_config_entry_id_is_rejected(
 async def test_an_unloaded_entry_is_rejected(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test an action refuses an unloaded entry, named or not."""
     entry = await setup_integration()
     await hass.config_entries.async_unload(entry.entry_id)
 
@@ -513,6 +543,7 @@ async def test_an_unloaded_entry_is_rejected(
 async def test_a_changed_password_starts_reauth(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test an action that Bilka refuses to authenticate fails and starts reauthentication."""
     entry = await setup_integration()
     bilka.password = "nyt-kodeord"
     bilka.script("cart", httpx.Response(401, json={"code": 401, "msg": "Unauthorized"}))
@@ -533,6 +564,7 @@ async def test_a_changed_password_starts_reauth(
 async def test_bilka_failures_become_a_translated_error(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test a connection failure to Bilka is raised as a translated error."""
     await setup_integration()
     bilka.script("algolia", httpx.ConnectError("no route to host"))
 
@@ -552,6 +584,10 @@ async def test_choose_pickup_slot_returns_the_chosen_and_replaced_slot_and_refre
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test choosing a Pickup Slot returns the new and the replaced one and refreshes the data.
+
+    The end of the chosen Pickup Slot comes from the slots Bilka offers.
+    """
     freezer.move_to(PICKUP_CAPTURED)
     cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-11")
     await setup_integration()
@@ -584,6 +620,7 @@ async def test_choose_pickup_slot_with_an_end_and_without_a_response(
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test choosing a Pickup Slot by its end too sends that end and returns nothing by default."""
     freezer.move_to(PICKUP_CAPTURED)
     await setup_integration()
 
@@ -638,6 +675,7 @@ async def test_choose_pickup_slot_refuses_a_slot_that_is_not_open(
     key: str,
     placeholders: dict[str, str],
 ) -> None:
+    """Test a sold out, closed or unoffered Pickup Slot is refused without asking Bilka."""
     freezer.move_to(captured)
     fixture = "cart_home.json" if captured == HOME_CAPTURED else "cart_logged_in.json"
     bilka.cart_contents = load_fixture(fixture)
@@ -657,6 +695,7 @@ async def test_choose_pickup_slot_carries_bilkas_refusal(
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a Pickup Slot Bilka refuses fails with Bilka's own message."""
     freezer.move_to(PICKUP_CAPTURED)
     await setup_integration()
     cart.script("set_delivery_date", load_fixture("set_delivery_date_unavailable.json"))
@@ -677,6 +716,7 @@ async def test_choose_pickup_slot_when_bilka_fails(
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a connection failure while choosing a Pickup Slot is not a validation error."""
     freezer.move_to(PICKUP_CAPTURED)
     await setup_integration()
     cart.script("set_delivery_date", httpx.ConnectError("no route to host"))
@@ -694,6 +734,11 @@ async def test_choose_pickup_point_returns_what_the_move_changed_and_refreshes(
     cart: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test moving the Cart to another Pickup Point returns what changed and refreshes the data.
+
+    The response holds the totals before and after, the Cart Lines now unavailable and
+    whether the Pickup Slot closed.
+    """
     freezer.move_to("2026-10-30T12:00:00+01:00")
     cart.unsold["1662"] = {"75191"}
     await setup_integration()
@@ -741,6 +786,7 @@ async def test_choose_pickup_point_returns_what_the_move_changed_and_refreshes(
 async def test_choose_home_delivery_returns_the_change_without_the_home_address(
     hass: HomeAssistant, setup_integration: SetupIntegration, home_delivery_cart: FakeBilka
 ) -> None:
+    """Test switching to Home Delivery returns the change but never shows the Home Address."""
     await setup_integration()
     await call(hass, "get_cart", {})  # remembers the Home Address
     home_delivery_cart.cart_contents = load_fixture("cart_logged_in.json")
@@ -765,6 +811,7 @@ async def test_choose_home_delivery_returns_the_change_without_the_home_address(
 async def test_choose_pickup_point_without_a_response(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test choosing a Pickup Point moves the Cart and returns nothing by default."""
     await setup_integration()
 
     response = await call(
@@ -778,6 +825,7 @@ async def test_choose_pickup_point_without_a_response(
 async def test_choose_pickup_point_refuses_an_unknown_name(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test a Pickup Point Bilka does not offer is refused without moving the Cart."""
     await setup_integration()
 
     with pytest.raises(ServiceValidationError) as refused:
@@ -791,6 +839,7 @@ async def test_choose_pickup_point_refuses_an_unknown_name(
 async def test_choose_home_delivery_without_a_known_home_address(
     hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
 ) -> None:
+    """Test Home Delivery is refused while no Home Address is known."""
     await setup_integration()
 
     with pytest.raises(ServiceValidationError) as refused:
@@ -806,6 +855,7 @@ async def test_the_home_address_is_remembered_in_the_entrys_store(
     setup_integration: SetupIntegration,
     home_delivery_cart: FakeBilka,
 ) -> None:
+    """Test the Home Address seen on the Cart is stored with the config entry."""
     entry = await setup_integration()
     await call(hass, "get_cart", {})
 
@@ -815,6 +865,7 @@ async def test_the_home_address_is_remembered_in_the_entrys_store(
 
 @pytest.mark.parametrize("language", ["en", "da"])
 async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -> None:
+    """Test every action, field and action error has a text with its placeholders."""
     services = await async_get_translations(hass, language, "services", [DOMAIN])
     exceptions = await async_get_translations(hass, language, "exceptions", [DOMAIN])
     prefix = f"component.{DOMAIN}"

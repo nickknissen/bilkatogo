@@ -1,0 +1,474 @@
+# serializer version: 1
+# name: test_all_entities[sensor.kunde_example_com_missing_items-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_missing_items',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Missing items',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Missing items',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'missing_items',
+    'unique_id': 'kunde@example.com_missing_items',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_missing_items-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Missing items',
+      'missing_items': list([
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_missing_items',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '0',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_next_available_pickup_slot-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_next_available_pickup_slot',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Next available pickup slot',
+    'options': dict({
+    }),
+    'original_device_class': <SensorDeviceClass.TIMESTAMP: 'timestamp'>,
+    'original_icon': None,
+    'original_name': 'Next available pickup slot',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'next_pickup_slot',
+    'unique_id': 'kunde@example.com_next_pickup_slot',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_next_available_pickup_slot-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'availability': 'open',
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'timestamp',
+      'end': '2026-11-09T12:00:00+01:00',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Next available pickup slot',
+      'note': 'For at benytte det valgte tidsrum, skal du bestille senest i morgen kl. 6:00, bemærk at tidspunktet kan blive fuldt booket forinden.',
+      'open_slots': 11,
+      'order_before': 'i morgen kl. 6:00',
+      'pickup_point': 'Bilka Waves, Hundige',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_next_available_pickup_slot',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '2026-11-09T09:00:00+00:00',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_order_status-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <SensorEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'processing',
+        'received',
+        'packed',
+        'picked_up',
+        'not_collected',
+        'cancelled',
+        'sold_out',
+        'unrecognized',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_order_status',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Order status',
+    'options': dict({
+    }),
+    'original_device_class': <SensorDeviceClass.ENUM: 'enum'>,
+    'original_icon': None,
+    'original_name': 'Order status',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'order_status',
+    'unique_id': 'kunde@example.com_order_status',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_order_status-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'enum',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Order status',
+      <SensorEntityCapabilityAttribute.OPTIONS: 'options'>: list([
+        'processing',
+        'received',
+        'packed',
+        'picked_up',
+        'not_collected',
+        'cancelled',
+        'sold_out',
+        'unrecognized',
+      ]),
+      'order_number': '900000000001',
+      'status_code': 'Pakket',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_order_status',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'packed',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_order_total-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_order_total',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Order total',
+    'options': dict({
+      'sensor': dict({
+        'suggested_display_precision': 2,
+      }),
+    }),
+    'original_device_class': <SensorDeviceClass.MONETARY: 'monetary'>,
+    'original_icon': None,
+    'original_name': 'Order total',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'order_total',
+    'unique_id': 'kunde@example.com_order_total',
+    'unit_of_measurement': 'DKK',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_order_total-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      'delivery_fee': 0.0,
+      'deposit': 0.0,
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'monetary',
+      'difference': -3.0,
+      'discount': 0.0,
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Order total',
+      'ordered_total': 512.0,
+      'packaging': 0.0,
+      'service_fee': 0.0,
+      <EntityStateAttribute.UNIT_OF_MEASUREMENT: 'unit_of_measurement'>: 'DKK',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_order_total',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '509.00',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_code-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_pickup_code',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Pickup code',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Pickup code',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'pickup_code',
+    'unique_id': 'kunde@example.com_pickup_code',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_code-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Pickup code',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_pickup_code',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '12345678',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_point-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_pickup_point',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Pickup point',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Pickup point',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'pickup_point',
+    'unique_id': 'kunde@example.com_pickup_point',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_point-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Pickup point',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_pickup_point',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'Bilka Eksempelby',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_slot-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_pickup_slot',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Pickup slot',
+    'options': dict({
+    }),
+    'original_device_class': <SensorDeviceClass.TIMESTAMP: 'timestamp'>,
+    'original_icon': None,
+    'original_name': 'Pickup slot',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'pickup_slot',
+    'unique_id': 'kunde@example.com_pickup_slot',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_pickup_slot-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.DEVICE_CLASS: 'device_class'>: 'timestamp',
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Pickup slot',
+      'pickup_slot_end': '2026-10-27T14:00:00+01:00',
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_pickup_slot',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '2026-10-27T11:00:00+00:00',
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_substitutions-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'sensor',
+    'entity_category': None,
+    'entity_id': 'sensor.kunde_example_com_substitutions',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Substitutions',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Substitutions',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'substitutions',
+    'unique_id': 'kunde@example.com_substitutions',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[sensor.kunde_example_com_substitutions-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Substitutions',
+      'substitutions': list([
+        dict({
+          'ordered_quantity': 4,
+          'original_article_number': '1001',
+          'original_product': 'Æbler',
+          'original_size': '1 kg',
+          'quantity': 4,
+          'replacement_article_number': '1002',
+          'replacement_line_total': 12.0,
+          'replacement_price': 4.0,
+          'replacement_product': 'Pærer',
+          'replacement_size': '750 g',
+        }),
+        dict({
+          'ordered_quantity': 2,
+          'original_article_number': '1004',
+          'original_product': 'Letmælk',
+          'original_size': '1 l',
+          'quantity': 3,
+          'replacement_article_number': '1005',
+          'replacement_line_total': 19.5,
+          'replacement_price': 6.5,
+          'replacement_product': 'Minimælk',
+          'replacement_size': '0,5 l',
+        }),
+      ]),
+    }),
+    'context': <ANY>,
+    'entity_id': 'sensor.kunde_example_com_substitutions',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '2',
+  })
+# ---

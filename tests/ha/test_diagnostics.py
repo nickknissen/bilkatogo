@@ -1,3 +1,5 @@
+"""Tests for the BilkaToGo diagnostics."""
+
 from collections.abc import Iterator
 from typing import Any, cast
 
@@ -33,6 +35,7 @@ PERSONAL_DATA = {
 
 
 def leaves(value: Any) -> Iterator[Any]:
+    """Yield every value in nested dicts and lists that is neither a dict nor a list."""
     if isinstance(value, dict):
         for item in value.values():
             yield from leaves(item)
@@ -44,6 +47,7 @@ def leaves(value: Any) -> Iterator[Any]:
 
 
 def pack_with_substitutions(bilka: FakeBilka) -> None:
+    """Make the Order with Substitutions the only one, Packed and with the customer's name."""
     order = next(o for o in bilka.orders if o["orderId"] == ORDER_NUMBER)
     bilka.orders = [{**order, "status": "Pakket", "name": "Test Kunde"}]
     details = bilka.details[ORDER_NUMBER]
@@ -60,6 +64,10 @@ async def test_diagnostics_keep_products_and_store_but_redact_personal_data(
     bilka: FakeBilka,
     snapshot: SnapshotAssertion,
 ) -> None:
+    """Test the diagnostics keep Products and the Store but redact personal data.
+
+    The Order Number is replaced by a placeholder wherever it appears.
+    """
     pack_with_substitutions(bilka)
     entry = await setup_integration()
 
@@ -84,6 +92,7 @@ async def test_diagnostics_hold_no_home_delivery_address(
     setup_integration: SetupIntegration,
     home_delivery_cart: FakeBilka,
 ) -> None:
+    """Test the diagnostics of a Cart on Home Delivery hold no Home Address or personal data."""
     entry = await setup_integration()
 
     diagnostics = await get_diagnostics_for_config_entry(hass, hass_client, entry)

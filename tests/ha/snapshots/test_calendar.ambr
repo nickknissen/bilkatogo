@@ -1,0 +1,51 @@
+# serializer version: 1
+# name: test_all_entities[calendar.kunde_example_com_pickup_slots-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'calendar',
+    'entity_category': None,
+    'entity_id': 'calendar.kunde_example_com_pickup_slots',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Pickup slots',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Pickup slots',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'pickup_slots',
+    'unique_id': 'kunde@example.com_pickup_slots',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[calendar.kunde_example_com_pickup_slots-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Pickup slots',
+    }),
+    'context': <ANY>,
+    'entity_id': 'calendar.kunde_example_com_pickup_slots',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'off',
+  })
+# ---

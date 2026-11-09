@@ -1,3 +1,5 @@
+"""Tests for how often BilkaToGo polls Bilka."""
+
 from datetime import datetime, timedelta
 
 import httpx
@@ -35,12 +37,14 @@ DAY_BEFORE_SLOT = "2026-11-02 12:00:00+00:00"
 def test_backoff_doubles_the_interval_per_failure_up_to_60_minutes(
     interval: int, failures: int, backed_off: int
 ) -> None:
+    """Test the backoff doubles the interval for each failure and never exceeds 60 minutes."""
     assert backoff_interval(timedelta(minutes=interval), failures) == timedelta(minutes=backed_off)
 
 
 async def polls_after(
     hass: HomeAssistant, bilka: FakeBilka, freezer: FrozenDateTimeFactory, minutes: int
 ) -> int:
+    """Move time on by the given minutes and return how often the Order History was fetched."""
     before = len(bilka.calls("order_history"))
     freezer.tick(timedelta(minutes=minutes))
     async_fire_time_changed(hass)
@@ -54,6 +58,7 @@ async def test_polls_every_5_minutes_from_3_hours_before_the_pickup_slot(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test BilkaToGo polls every 5 minutes within 3 hours of the Pickup Slot."""
     freezer.move_to(THREE_HOURS_BEFORE_SLOT)
     await setup_integration()
 
@@ -67,6 +72,7 @@ async def test_polls_every_60_minutes_when_no_pickup_slot_starts_within_3_hours(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test BilkaToGo polls every 60 minutes while the Pickup Slot is over 3 hours away."""
     freezer.move_to(DAY_BEFORE_SLOT)
     await setup_integration()
 
@@ -80,6 +86,7 @@ async def test_switches_to_5_minutes_exactly_3_hours_before_the_pickup_slot(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test polling goes from 60 to 5 minutes exactly 3 hours before the Pickup Slot."""
     freezer.move_to("2026-11-03 11:30:00+00:00")
     await setup_integration()
 
@@ -107,6 +114,7 @@ async def test_the_3_hours_before_the_pickup_slot_are_real_hours_when_the_clocks
     start: str,
     three_hours_before: str,
 ) -> None:
+    """Test 5-minute polling starts 3 real hours before the Pickup Slot across a clock change."""
     bilka.orders[0] = {
         **bilka.orders[0],
         "deliveryDate": delivery_date,
@@ -126,6 +134,7 @@ async def test_keeps_polling_every_5_minutes_after_the_slot_while_unfinished(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test polling stays at 5 minutes after the Pickup Slot while the Order is unfinished."""
     freezer.move_to("2026-11-03 20:00:00+00:00")
     await setup_integration()
 
@@ -140,6 +149,7 @@ async def test_returns_to_60_minutes_once_the_current_order_is_finished(
     freezer: FrozenDateTimeFactory,
     status_code: str,
 ) -> None:
+    """Test polling returns to 60 minutes once the Current Order is a Finished Order."""
     freezer.move_to(THREE_HOURS_BEFORE_SLOT)
     await setup_integration()
     bilka.orders[0] = {**bilka.orders[0], "status": status_code}
@@ -152,6 +162,7 @@ async def test_returns_to_60_minutes_once_the_current_order_is_finished(
 async def next_poll_after(
     hass: HomeAssistant, bilka: FakeBilka, freezer: FrozenDateTimeFactory, minutes: int
 ) -> None:
+    """Assert the next poll comes exactly the given number of minutes later."""
     assert await polls_after(hass, bilka, freezer, minutes - 1) == 0
     assert await polls_after(hass, bilka, freezer, 1) == 1
 
@@ -171,6 +182,7 @@ async def test_backs_off_while_bilka_fails_in_the_fast_window_and_recovers_at_on
     freezer: FrozenDateTimeFactory,
     failure: Scripted,
 ) -> None:
+    """Test failures near the Pickup Slot back off up to 60 minutes, and success resets it."""
     freezer.move_to(THREE_HOURS_BEFORE_SLOT)
     await setup_integration()
     bilka.script("order_history", *[failure] * 5)
@@ -192,6 +204,7 @@ async def test_a_failed_update_outside_the_fast_window_polls_again_after_60_minu
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a failed update far from the Pickup Slot polls again after 60 minutes."""
     freezer.move_to(DAY_BEFORE_SLOT)
     await setup_integration()
     bilka.script("order_history", FAILURES["busy"], FAILURES["busy"])
@@ -207,6 +220,7 @@ async def test_failing_pickup_slots_do_not_back_off(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test failing to fetch Pickup Slots does not make polling back off."""
     freezer.move_to(THREE_HOURS_BEFORE_SLOT)
     await setup_integration()
     bilka.script("available_delivery_dates", FAILURES["busy"], FAILURES["busy"])

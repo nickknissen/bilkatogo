@@ -1,3 +1,5 @@
+"""Tests for the Order Total sensor."""
+
 from datetime import timedelta
 
 from freezegun.api import FrozenDateTimeFactory
@@ -22,6 +24,7 @@ BREAKDOWN = {
 
 
 def order_total(hass: HomeAssistant, entry: MockConfigEntry) -> State:
+    """Return the state of the Order Total sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "sensor", DOMAIN, f"{entry.unique_id}_order_total"
     )
@@ -32,6 +35,7 @@ def order_total(hass: HomeAssistant, entry: MockConfigEntry) -> State:
 
 
 def set_status(bilka: FakeBilka, status_code: str, packed_price: int) -> None:
+    """Make the test Order the only one, with the Bilka Status Code and Order Total in øre."""
     bilka.orders = [
         {
             **bilka.orders[0],
@@ -46,6 +50,7 @@ def set_status(bilka: FakeBilka, status_code: str, packed_price: int) -> None:
 
 
 async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """Move time on to the next scheduled update and wait for it to finish."""
     freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -57,6 +62,11 @@ async def test_order_total_from_received_to_picked_up(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test the Order Total follows the Order from Received to Picked Up.
+
+    The breakdown into Deposit and fees appears once the Order is Packed, and the
+    Order details are fetched only once.
+    """
     set_status(bilka, "Bestilt", 79900)
     entry = await setup_integration()
 
@@ -89,6 +99,7 @@ async def test_order_total_from_received_to_picked_up(
 async def test_received_order_total_is_bilkas_estimate(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test a Received Order shows Bilka's estimated Order Total and its Ordered Total."""
     bilka.orders = load_fixture("order_history_received.json")["orders"]
     entry = await setup_integration()
 
@@ -101,6 +112,7 @@ async def test_received_order_total_is_bilkas_estimate(
 async def test_order_total_is_translated_in_danish_and_english(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test the sensor's name and attributes have Danish and English translations."""
     await setup_integration()
     prefix = f"component.{DOMAIN}.entity.sensor.order_total."
 

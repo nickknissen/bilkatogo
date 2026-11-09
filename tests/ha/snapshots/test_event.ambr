@@ -1,0 +1,128 @@
+# serializer version: 1
+# name: test_all_entities[event.kunde_example_com_missing_item-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <EventEntityCapabilityAttribute.EVENT_TYPES: 'event_types'>: list([
+        'missing_item',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'event',
+    'entity_category': None,
+    'entity_id': 'event.kunde_example_com_missing_item',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Missing item',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Missing item',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'missing_item',
+    'unique_id': 'kunde@example.com_missing_item',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[event.kunde_example_com_missing_item-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EventEntityStateAttribute.EVENT_TYPE: 'event_type'>: None,
+      <EventEntityCapabilityAttribute.EVENT_TYPES: 'event_types'>: list([
+        'missing_item',
+      ]),
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Missing item',
+    }),
+    'context': <ANY>,
+    'entity_id': 'event.kunde_example_com_missing_item',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'unknown',
+  })
+# ---
+# name: test_all_entities[event.kunde_example_com_substitution-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': dict({
+      <EventEntityCapabilityAttribute.EVENT_TYPES: 'event_types'>: list([
+        'substitution',
+      ]),
+    }),
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'event',
+    'entity_category': None,
+    'entity_id': 'event.kunde_example_com_substitution',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Substitution',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Substitution',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'substitution',
+    'unique_id': 'kunde@example.com_substitution',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[event.kunde_example_com_substitution-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EventEntityStateAttribute.EVENT_TYPE: 'event_type'>: 'substitution',
+      <EventEntityCapabilityAttribute.EVENT_TYPES: 'event_types'>: list([
+        'substitution',
+      ]),
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Substitution',
+      'order_number': '900000000001',
+      'ordered_quantity': 2,
+      'original_article_number': '1004',
+      'original_product': 'Letmælk',
+      'original_size': '1 l',
+      'quantity': 3,
+      'replacement_article_number': '1005',
+      'replacement_line_total': 19.5,
+      'replacement_price': 6.5,
+      'replacement_product': 'Minimælk',
+      'replacement_size': '0,5 l',
+    }),
+    'context': <ANY>,
+    'entity_id': 'event.kunde_example_com_substitution',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': '2026-11-08T19:00:00.001+00:00',
+  })
+# ---

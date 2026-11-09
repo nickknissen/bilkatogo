@@ -1,3 +1,5 @@
+"""Tests for announcing Missing Items."""
+
 from datetime import timedelta
 from typing import Any
 
@@ -30,6 +32,7 @@ MISSING_ITEMS = [
 
 
 def missing_items(hass: HomeAssistant, entry: MockConfigEntry) -> State:
+    """Return the state of the Missing Items sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "sensor", DOMAIN, f"{entry.unique_id}_missing_items"
     )
@@ -40,12 +43,14 @@ def missing_items(hass: HomeAssistant, entry: MockConfigEntry) -> State:
 
 
 def set_status(bilka: FakeBilka, status_code: str) -> None:
+    """Make the Order with Missing Items the only Order, with the given Bilka Status Code."""
     bilka.orders = [{**bilka.orders[0], "orderId": ORDER_NUMBER, "status": status_code}]
     details = bilka.details[ORDER_NUMBER]
     bilka.details[ORDER_NUMBER] = {"order": {**details["order"], "status": status_code}}
 
 
 async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """Move time on an hour and let the next update run."""
     freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -54,6 +59,7 @@ async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> No
 async def test_missing_items_are_shown_once_the_order_is_packed(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test the Missing Items sensor counts and lists the Missing Items of a Packed Order."""
     set_status(bilka, "Pakket")
 
     entry = await setup_integration()
@@ -69,6 +75,7 @@ async def test_each_missing_item_is_announced_once_from_received_to_picked_up(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test each Missing Item is announced once, and not again on reload or when Picked Up."""
     state_changes = async_capture_events(hass, EVENT_STATE_CHANGED)
     set_status(bilka, "Bestilt")
     entry = await setup_integration()
@@ -101,6 +108,7 @@ async def test_each_missing_item_is_announced_once_from_received_to_picked_up(
 async def test_the_missing_item_entity_fires_for_missing_items_found_at_setup(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test the Missing Item event entity fires for the Missing Items already there at setup."""
     state_changes = async_capture_events(hass, EVENT_STATE_CHANGED)
     set_status(bilka, "Pakket")
 
@@ -115,6 +123,7 @@ async def test_the_missing_item_entity_fires_for_missing_items_found_at_setup(
 async def test_event_entities_are_translated_in_danish_and_english(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test the event entities, their events and attributes have Danish and English names."""
     await setup_integration()
     prefix = f"component.{DOMAIN}.entity.event."
 
@@ -153,6 +162,7 @@ async def test_announced_missing_items_survive_a_restart(
     hass_storage: dict[str, Any],
     config_entry: MockConfigEntry,
 ) -> None:
+    """Test Missing Items announced before a restart are not announced again."""
     hass_storage[f"bilkatogo.{config_entry.entry_id}.missing_items"] = {
         "version": 1,
         "key": f"bilkatogo.{config_entry.entry_id}.missing_items",
@@ -175,6 +185,7 @@ async def test_removing_the_entry_forgets_announced_missing_items(
     bilka: FakeBilka,
     hass_storage: dict[str, Any],
 ) -> None:
+    """Test removing the config entry deletes the stored announced Missing Items."""
     set_status(bilka, "Pakket")
     entry = await setup_integration()
     assert f"bilkatogo.{entry.entry_id}.missing_items" in hass_storage
