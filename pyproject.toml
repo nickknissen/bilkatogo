@@ -10,7 +10,6 @@ license = "MIT"
 license-files = ["LICENSE"]
 keywords = ["bilka", "bilkatogo", "danish", "groceries", "api", "async"]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.14",
     "Framework :: AsyncIO",
@@ -33,7 +32,7 @@ Repository = "https://github.com/nickknissen/bilkatogo"
 Issues = "https://github.com/nickknissen/bilkatogo/issues"
 
 [build-system]
-requires = ["uv_build>=0.9.26,<0.10.0"]
+requires = ["uv_build>=0.13.5,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv]
