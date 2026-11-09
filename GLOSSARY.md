@@ -87,6 +87,10 @@ _Avoid_: Promo, savings
 **Home Delivery**:
 An Order that is brought to the customer's address instead of collected at a Pickup Point. Bilka's `pickupzone.home_delivery` on an Order. The Cart has no such flag: its `deliveryAddress` is a home address when it has a `dawa_uid` or a `recipient_name`, both empty for a Pickup Point (ADR 0005).
 
+**Home Address**:
+An address saved in the customer's BilkaToGo account that Home Delivery can bring the Cart to. Bilka lists it among the places in `AvailableDeliveryAddresses`, next to the Pickup Points. It is not a Pickup Point.
+_Avoid_: Delivery address, home (alone), place
+
 **Minimum Order**:
 The smallest Cart total Bilka accepts for Home Delivery; `minimum_buy`. Pickup has none in every capture.
 _Avoid_: Minimum buy, minimumskøb (use only as the Danish alias)
