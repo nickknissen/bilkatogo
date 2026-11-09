@@ -76,8 +76,8 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
         )
         self.client = client
         self.announcers = announcers(hass, entry.entry_id)
-        # Failed updates in a row, which back off polling (backoff_interval).
-        self.failures = 0
+        # Back off polling while Bilka fails (backoff_interval).
+        self.consecutive_failures = 0
 
     async def _async_setup(self) -> None:
         for announcer in self.announcers:
@@ -95,17 +95,19 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
                 translation_placeholders={"error": str(err)},
             ) from err
         except BilkaToGoError as err:
-            self.failures += 1
+            self.consecutive_failures += 1
             # update_interval stays what the last success set; retry_after only delays the
             # next refresh.
-            retry_after = backoff_interval(self.update_interval or UPDATE_INTERVAL, self.failures)
+            retry_after = backoff_interval(
+                self.update_interval or UPDATE_INTERVAL, self.consecutive_failures
+            )
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="update_failed",
                 translation_placeholders={"error": str(err)},
                 retry_after=retry_after.total_seconds(),
             ) from err
-        self.failures = 0
+        self.consecutive_failures = 0
         pickup_slots = await self._async_fetch_pickup_slots()
         self.update_interval = polling_interval(order, dt_util.utcnow())
         announced = {}

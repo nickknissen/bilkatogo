@@ -11,6 +11,7 @@ from tests.fake_bilka import FakeBilka, Scripted
 from tests.ha.conftest import SetupIntegration
 
 THREE_HOURS_BEFORE_SLOT = "2026-11-03 12:00:00+00:00"
+DAY_BEFORE_SLOT = "2026-11-02 12:00:00+00:00"
 
 
 @pytest.mark.parametrize(
@@ -66,7 +67,7 @@ async def test_polls_every_60_minutes_when_no_pickup_slot_starts_within_3_hours(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    freezer.move_to("2026-11-02 12:00:00+00:00")
+    freezer.move_to(DAY_BEFORE_SLOT)
     await setup_integration()
 
     assert await polls_after(hass, bilka, freezer, 59) == 0
@@ -191,7 +192,7 @@ async def test_a_failed_update_outside_the_fast_window_polls_again_after_60_minu
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    freezer.move_to("2026-11-02 12:00:00+00:00")
+    freezer.move_to(DAY_BEFORE_SLOT)
     await setup_integration()
     bilka.script("order_history", FAILURES["busy"], FAILURES["busy"])
 
