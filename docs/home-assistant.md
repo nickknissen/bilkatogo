@@ -45,7 +45,10 @@ again.
 ## Data updates
 
 The integration polls Bilka every 60 minutes, and every 5 minutes from 3 hours before the
-Pickup Slot starts until the order is picked up, not collected or cancelled. If you set your
+Pickup Slot starts until the order is picked up, not collected or cancelled. While Bilka fails
+to answer, it waits twice as long after each failed update in a row, up to 60 minutes (so 10,
+20, 40, then 60 minutes close to the Pickup Slot), and goes back to its normal interval as soon
+as Bilka answers. If you set your
 own polling interval, keep it at 5 minutes or more so the traffic still looks like a person
 checking their order. To update now, use the `homeassistant.update_entity` action on any
 BilkaToGo entity.
