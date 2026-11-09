@@ -91,7 +91,7 @@ class BilkaToGoConfigFlow(ConfigFlow, domain=DOMAIN):
             await client.login()
         except InvalidCredentialsError:
             return {"base": "invalid_auth"}
-        except BilkaUnreachableError, BilkaBusyError:
+        except (BilkaUnreachableError, BilkaBusyError):
             return {"base": "cannot_connect"}
         except BilkaToGoError:
             LOGGER.exception("Unexpected answer from Bilka while logging in")

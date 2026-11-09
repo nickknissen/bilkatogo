@@ -11,6 +11,9 @@ STEPS = [
     ["ty", "check"],
     ["python", "release.py", "check"],
     ["pytest"],
+    # The oldest Python the library supports. ty and ruff check its syntax, but not that an
+    # annotation evaluated at import names something defined then.
+    ["--isolated", "--python", "3.12", "pytest"],
 ]
 
 

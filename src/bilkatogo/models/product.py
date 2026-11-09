@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
@@ -86,7 +88,7 @@ def blockbit(data: dict[str, Any] | None) -> int:
     Delivery Block where its bits and the place's share one; no bit means anything alone."""
     try:
         return int((data or {}).get("blockbit") or 0)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return 0
 
 
@@ -167,7 +169,7 @@ def _unit_price_paid(product: Product) -> tuple[bool, Decimal]:
 def _whole_number(value: Any) -> int | None:
     try:
         return int(value) or None
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 

@@ -18,13 +18,19 @@ jobs:
       - run: uv run ty check
       - run: uv run python release.py check
 
+  # The library supports Python 3.12 and up (pyproject.toml's requires-python); Home
+  # Assistant needs 3.14, so the ha jobs stay there.
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14.9"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
-          python-version: "3.14.9"
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --locked
       - run: uv run pytest
 

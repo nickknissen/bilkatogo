@@ -16,7 +16,9 @@ Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents
 
 ## Testing
 
-Before calling any change done, run `uv run python scripts/check.py`: CI's lint and test jobs (ruff format, ruff, ty, `release.py check`, pytest).
+Before calling any change done, run `uv run python scripts/check.py`: CI's lint and test jobs (ruff format, ruff, ty, `release.py check`, pytest, and pytest again on Python 3.12).
+
+The library supports Python 3.12 and up; only `custom_components/` and `tests/ha` may need 3.14, which Home Assistant requires. In `src/`, a module whose annotations name a class defined later or imported under `TYPE_CHECKING` needs `from __future__ import annotations`; ty does not catch the `NameError` this raises on 3.12 and 3.13.
 
 `uv run pytest` skips `tests/ha` when Home Assistant can't be installed, which is always the case on Windows. Before calling a change to `custom_components/` or a model's serialised fields done, run `scripts/ha-test.sh` (from Windows: `wsl.exe -e bash scripts/ha-test.sh`); it runs CI's `ha-test` job, including the diagnostics snapshot.
 

@@ -11,10 +11,12 @@ license-files = ["LICENSE"]
 keywords = ["bilka", "bilkatogo", "danish", "groceries", "api", "async"]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Framework :: AsyncIO",
 ]
-requires-python = ">=3.14.2"
+requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
     "tzdata; sys_platform == 'win32'",
@@ -39,8 +41,12 @@ build-backend = "uv_build"
 default-groups = ["dev"]
 conflicts = [[{ group = "dev" }, { group = "ha" }]]
 
+# The library supports Python 3.12 and up; Home Assistant, and so its tests, needs 3.14.2.
+[tool.uv.dependency-groups]
+ha = { requires-python = ">=3.14.2" }
+
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length = 100
 extend-exclude = [".worktrees", "*.md"]
 
@@ -55,7 +61,7 @@ markers = ["live: reads the real bilkatogo.dk; run with -m live"]
 addopts = "-m 'not live'"
 
 [tool.ty.environment]
-python-version = "3.14"
+python-version = "3.12"
 
 [tool.ty.src]
 include = ["src/", "tests/", "release.py", "scripts/"]

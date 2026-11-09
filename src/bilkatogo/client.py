@@ -226,7 +226,7 @@ class BilkaToGoClient:
             return None
         try:
             jwt = await self._gigya_jwt(self._login_token)
-        except _GigyaRefusedError, InvalidCredentialsError:
+        except (_GigyaRefusedError, InvalidCredentialsError):
             self._login_token = None
             await self._save_session()
             return None
@@ -503,7 +503,7 @@ class BilkaToGoClient:
         for delay in CART_CHANGE_RETRY_DELAYS:
             try:
                 return await self._change_line_count(article_number, quantity)
-            except BilkaUnreachableError, _ShopBusyError:
+            except (BilkaUnreachableError, _ShopBusyError):
                 await sleep(delay)
         return await self._change_line_count(article_number, quantity)
 
@@ -729,7 +729,7 @@ class BilkaToGoClient:
         try:
             [result] = self._json(response, "Product search")["results"]
             hits = result["hits"]
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             raise UnexpectedResponseError("Product search answered without results") from None
         products = (Product.from_hit(hit, store_id, place.blockbit) for hit in hits)
         return [product for product in products if product is not None]
@@ -777,7 +777,7 @@ class BilkaToGoClient:
         try:
             expires_at = datetime.fromisoformat(session["jwt_expires_at"])
             jwt = session["jwt"]
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             return None
         self._jwt = jwt
         self._jwt_expires_at = expires_at
