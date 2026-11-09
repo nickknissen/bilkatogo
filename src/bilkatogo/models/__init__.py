@@ -21,5 +21,6 @@ from .recipe import Recipe as Recipe
 from .recipe import RecipeDetails as RecipeDetails
 from .recipe import RecipeSection as RecipeSection
 from .slots import AvailablePickupSlot as AvailablePickupSlot
+from .slots import ChosenPickupSlot as ChosenPickupSlot
 from .slots import PickupSlots as PickupSlots
 from .slots import SlotAvailability as SlotAvailability

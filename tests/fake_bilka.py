@@ -3,6 +3,7 @@ import copy
 import json
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
+from datetime import date
 from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, parse_qsl
@@ -20,6 +21,7 @@ ALGOLIA_APP_ID = "F9VBJLR1BK"
 ALGOLIA_SEARCH_KEY = "1deaf41c87e729779f7695c00f190cc9"
 ALGOLIA_INDEX = "prod_BILKATOGO_PRODUCTS"
 UID = 900001
+DANISH_WEEKDAYS = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"]
 
 # Without a valid JWT Bilka answers shop calls with HTTP 200 and `uid: -1` (captured 2026-11-02).
 LOGGED_OUT = {"code": "ACCESS_DENIED", "msg": "Metoden kræver login", "eid": 401, "uid": -1}
@@ -45,6 +47,7 @@ ROUTES: dict[tuple[str, str], str] = {
         "GET",
         "https://api.bilkatogo.dk/api/shop/v3/AvailableDeliveryDates",
     ): "available_delivery_dates",
+    ("GET", "https://api.bilkatogo.dk/api/shop/v3/SetDeliveryDate"): "set_delivery_date",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/ChangeLineCount"): "change_line_count",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/EmptyCart"): "empty_cart",
     ("POST", "https://f9vbjlr1bk-dsn.algolia.net/1/indexes/*/queries"): "algolia",
@@ -229,11 +232,58 @@ class FakeBilka:
 
     def available_delivery_dates(self, request: httpx.Request) -> httpx.Response:
         """The Pickup Slots for whatever the Cart has: its Pickup Point or Home Delivery."""
-        home = is_home_delivery(self.cart_contents.get("deliveryAddress"))
-        answer = load_fixture(f"available_delivery_dates_{'home' if home else 'pickup'}.json")
         # Bilka's logged-out answer was not captured; a guest answer with `uid: -1` like Cart's.
         uid = UID if self.has_shop_session(request) else -1
-        return httpx.Response(200, json={**answer, "uid": uid})
+        return httpx.Response(200, json={**self._slot_listing(), "uid": uid})
+
+    def _slot_listing(self) -> dict[str, Any]:
+        home = is_home_delivery(self.cart_contents.get("deliveryAddress"))
+        return load_fixture(f"available_delivery_dates_{'home' if home else 'pickup'}.json")
+
+    def set_delivery_date(self, request: httpx.Request) -> httpx.Response:
+        """Chooses the Cart's Pickup Slot. Like Bilka, a slot it does not list as open is
+        refused with `eid` 406 and the Cart keeps its slot (captured 2026-11-09)."""
+        # Bilka's answer to a logged-out SetDeliveryDate was not captured.
+        if not self.has_shop_session(request):
+            return httpx.Response(401, json={"code": 401, "msg": "Unauthorized"})
+        params = request.url.params
+        day, start, end = params["deliveryDate"], params["intervalStart"], params["intervalEnd"]
+        if not self._is_open(day, start, end):
+            refused = {**load_fixture("set_delivery_date_unavailable.json"), "deliveryDate": day}
+            return httpx.Response(200, json=refused)
+        weekday = DANISH_WEEKDAYS[date.fromisoformat(day).weekday()]
+        shown = f"{weekday}. {day[8:10]}/{day[5:7]}."
+        chosen = {
+            "displayDeliveryDate": day,
+            "deliveryDate": day,
+            "deliveryDay": weekday,
+            "intervalStart": start,
+            "intervalEnd": end,
+            "closed": 0,
+            "delivery_message": f"{shown} Senest kl. {end}"
+            if start == "00:00"
+            else f"{shown} kl. {start} - {end}",
+        }
+        self.cart_contents["deliveryDate"] = {
+            **(self.cart_contents.get("deliveryDate") or {}),
+            **chosen,
+        }
+        answer = {
+            **load_fixture("set_delivery_date.json"),
+            **chosen,
+            "stat": self.cart_contents["stat"],
+            "lines": self.cart_contents["lines"],
+        }
+        return httpx.Response(200, json=answer)
+
+    def _is_open(self, day: str, start: str, end: str) -> bool:
+        for day_data in self._slot_listing()["availableIntervals"]:
+            if day_data["date"] != day:
+                continue
+            for interval in day_data.get("intervals") or []:
+                if (interval["intervalStart"], interval["intervalEnd"]) == (start, end):
+                    return not interval.get("closed") and interval["availability_bit"] & 1
+        return False
 
     def change_line_count(self, request: httpx.Request) -> httpx.Response:
         # Bilka's answer to a logged-out change was not captured.

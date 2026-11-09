@@ -59,6 +59,9 @@
     },
     "get_cart": {
       "service": "mdi:cart"
+    },
+    "choose_pickup_slot": {
+      "service": "mdi:calendar-clock"
     }
   }
 }

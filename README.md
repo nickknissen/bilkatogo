@@ -53,8 +53,8 @@ errors, is in [docs/library.md](https://github.com/nickknissen/bilkatogo/blob/ma
 
 The integration follows your Current Order in Home Assistant: its Order Status, Pickup Slot,
 Pickup Code and Order Total, which products Bilka substituted or left out, and a calendar of
-your Pickup Slots. Actions search Bilka's products and add them to your Cart. It needs Home
-Assistant 2026.10 or later.
+your Pickup Slots. Actions search Bilka's products, add them to your Cart and choose its Pickup
+Slot. It needs Home Assistant 2026.10 or later.
 
 1. Install **BilkaToGo** from the Home Assistant Marketplace (HACS): open HACS, search for
    **BilkaToGo** and download it, or open it straight away:

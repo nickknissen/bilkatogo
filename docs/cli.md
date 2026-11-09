@@ -22,6 +22,7 @@ bilkatogo order 900000000001    # show one order by Order Number
 bilkatogo pickup-points         # list Pickup Points and their Store, * marks your Cart's
 bilkatogo pickup-slots          # the next 7 days' Pickup Slots for your Cart: open, closed or sold out
 bilkatogo pickup-slots --days 3 # today and the next 2 days
+bilkatogo pickup-slots choose 2026-11-12 16:00   # choose the Cart's Pickup Slot by date and start
 bilkatogo search skyr           # Products with Article Number, Size, Price, stock and Offer at your Cart's Store
 bilkatogo search skyr --pickup-point "Bilka Vejle" --limit 5
 bilkatogo search mælk --in-stock --sort price   # the cheapest of the 20 best matches, counting Offers
@@ -60,7 +61,16 @@ Logging in on the website or in the app afterwards can undo these changes (see t
 Delivery, in a table of Date, Start, End, Availability (Open, Closed once its order deadline
 has passed, Sold out), Order before (Bilka's deadline) and Note, with a "No slots" row for a
 day Bilka offers none. It ends with the next open slot, or "No open Pickup Slots in the next N
-days.". It never chooses a slot: do that on bilkatogo.dk. With `--json` it adds `next_open`.
+days.". With `--json` it adds `next_open`.
+
+`pickup-slots choose DATE START` chooses one of the open slots in the next 14 days for your
+Cart, without asking, like `cart add`. `DATE` is ISO (`2026-11-12`) and `START` is `HH:MM`. A
+Home Delivery night slot is chosen by the date it is listed under and `00:00`. Add `--end HH:MM`
+if two slots on that day start at the same time. It prints the chosen slot and the one it
+replaced, so you can go back while that one is still open. A slot that is closed, sold out or
+not offered fails with a message and exit 1, and the Cart keeps its slot. Choosing holds
+nothing: the slot can still sell out until you place the Order on bilkatogo.dk. The Pickup
+Point or Home Delivery is still chosen there too.
 
 Every command accepts `--json` for machine-readable output.
 

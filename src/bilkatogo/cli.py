@@ -13,7 +13,7 @@ import typer
 
 from . import config
 from .client import BilkaToGoClient
-from .const import SEARCH_LIMIT
+from .const import CHOOSABLE_SLOT_DAYS, SEARCH_LIMIT
 from .exceptions import (
     BilkaToGoError,
     BilkaUnreachableError,
@@ -25,6 +25,7 @@ from .models import (
     Cart,
     CartChanges,
     CartChangeStatus,
+    ChosenPickupSlot,
     Offer,
     Order,
     OrderDetails,
@@ -392,15 +393,22 @@ async def pickup_points(
 
 
 DaysOption = Annotated[
-    int, typer.Option("--days", min=1, help="Number of days to show, today included.")
+    int | None,
+    typer.Option("--days", min=1, help="Number of days to show, today included; 7 by default."),
 ]
+DEFAULT_SLOT_DAYS = 7
+
+pickup_slots_app = typer.Typer(
+    help="Show the coming days' Pickup Slots for your Cart, or choose one."
+)
+app.add_typer(pickup_slots_app, name="pickup-slots")
 
 
-@app.command("pickup-slots")
+@pickup_slots_app.callback(invoke_without_command=True)
 @run_async
 async def pickup_slots(
     ctx: typer.Context,
-    days: DaysOption = 7,
+    days: DaysOption = None,
     email: EmailOption = None,
     password: PasswordOption = None,
     as_json: JsonOption = False,
@@ -408,7 +416,15 @@ async def pickup_slots(
     redact: RedactOption = False,
 ) -> None:
     """Show the coming days' Pickup Slots for your Cart and whether they are open. Choose one
-    on bilkatogo.dk."""
+    with `pickup-slots choose`."""
+    if ctx.invoked_subcommand is not None:
+        check_no_group_options(
+            f"pickup-slots {ctx.invoked_subcommand}",
+            as_json,
+            [("--days", days is not None), ("--raw", raw), ("--redact", redact)],
+        )
+        return
+    days = days or DEFAULT_SLOT_DAYS
     check_redact(raw, redact)
     if raw:
         data = await with_session(
@@ -455,6 +471,67 @@ async def pickup_slots(
 
 def format_day(day: date) -> str:
     return f"{WEEKDAYS[day.weekday()]} {day:%d/%m}"
+
+
+@pickup_slots_app.command("choose")
+@run_async
+async def pickup_slots_choose(
+    ctx: typer.Context,
+    day: Annotated[str, typer.Argument(metavar="DATE", help="The slot's date, e.g. 2026-11-12.")],
+    start: Annotated[str, typer.Argument(metavar="START", help="The slot's start, e.g. 16:00.")],
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="The slot's end, when two slots start at the same time."),
+    ] = None,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Choose your Cart's Pickup Slot among the open ones. It holds nothing: the slot can still
+    sell out until you order on bilkatogo.dk."""
+    on = parse_date(day)
+    starts = parse_time(start)
+    ends = parse_time(end) if end is not None else None
+
+    async def choose(client: BilkaToGoClient) -> ChosenPickupSlot:
+        if ends is not None:
+            return await client.choose_pickup_slot(PickupSlot(on, starts, ends))
+        slots = await client.get_pickup_slots(days=CHOOSABLE_SLOT_DAYS)
+        matches = slots.starting_at(on, starts)
+        if not matches:
+            raise fail(f"No Pickup Slot on {format_day(on)} starts at {starts:%H:%M}.")
+        if len(matches) > 1:
+            raise fail(
+                f"Several Pickup Slots on {format_day(on)} start at {starts:%H:%M}; "
+                "give the end with --end."
+            )
+        return await client.choose_pickup_slot(matches[0].slot)
+
+    result = await with_session(
+        ctx, email, password, choose, "the pickup slot", action="Could not choose"
+    )
+    if as_json:
+        typer.echo(to_json(result))
+    elif not result.changed:
+        typer.echo(f"{'Chosen':<9} {format_slot(result.chosen)} (already chosen)")
+    else:
+        typer.echo(f"{'Chosen':<9} {format_slot(result.chosen)}")
+        typer.echo(f"{'Replaced':<9} {format_slot(result.replaced) or 'none'}")
+
+
+def parse_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise fail(f"{value!r} is not a date like 2026-11-12.") from None
+
+
+def parse_time(value: str) -> time:
+    hours, _, minutes = value.partition(":")
+    try:
+        return time(int(hours), int(minutes))
+    except ValueError:
+        raise fail(f"{value!r} is not a time like 16:00.") from None
 
 
 SearchTextArgument = Annotated[str, typer.Argument(help="What to search for, e.g. skyr.")]
@@ -595,7 +672,9 @@ async def cart(
 ) -> None:
     """Show your Cart: its Cart Lines, the Cart total, Pickup Point or Home Delivery and fees."""
     if ctx.invoked_subcommand is not None:
-        check_no_cart_output_options(ctx.invoked_subcommand, as_json, raw, redact)
+        check_no_group_options(
+            f"cart {ctx.invoked_subcommand}", as_json, [("--raw", raw), ("--redact", redact)]
+        )
         return
     check_redact(raw, redact)
     if raw:
@@ -611,12 +690,14 @@ async def cart(
     print_cart(found)
 
 
-def check_no_cart_output_options(subcommand: str, as_json: bool, raw: bool, redact: bool) -> None:
-    for option, given in (("--raw", raw), ("--redact", redact)):
+def check_no_group_options(command: str, as_json: bool, options: list[tuple[str, bool]]) -> None:
+    """Refuse a group's own options, e.g. `cart --raw add`, which only apply without a
+    subcommand; `command` is the group and subcommand, e.g. "cart add"."""
+    for option, given in options:
         if given:
-            raise fail(f"{option} only works without a subcommand, not with cart {subcommand}.")
+            raise fail(f"{option} only works without a subcommand, not with {command}.")
     if as_json:
-        raise fail(f"Put --json after the subcommand: cart {subcommand} --json.")
+        raise fail(f"Put --json after the subcommand: {command} --json.")
 
 
 ArticleArgument = Annotated[str, typer.Argument(help="Article Number, e.g. 18381.")]

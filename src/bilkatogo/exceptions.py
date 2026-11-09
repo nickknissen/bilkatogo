@@ -1,3 +1,9 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models import PickupSlot, SlotAvailability
+
+
 class BilkaToGoError(Exception):
     """Base class for all errors raised by the bilkatogo client."""
 
@@ -57,6 +63,30 @@ class CartChangeRejectedError(BilkaToGoError):
         self.article_number = article_number
         self.requested = requested
         self.applied = applied
+
+
+class PickupSlotUnavailableError(BilkaToGoError):
+    """The Pickup Slot cannot be chosen for the Cart: Bilka does not offer it, lists it as
+    closed or sold out, or refused it when asked. Nothing in the Cart changed.
+
+    `availability` is how Bilka listed the slot, None when it does not list it or refused it
+    itself; `refused` is True when Bilka refused it when asked, e.g. because it sold out in
+    between; `reason` says why, in Bilka's words when it gave any.
+    """
+
+    def __init__(
+        self,
+        slot: PickupSlot,
+        reason: str,
+        availability: SlotAvailability | None = None,
+        *,
+        refused: bool = False,
+    ) -> None:
+        super().__init__(f"The Pickup Slot {slot} cannot be chosen: {reason}")
+        self.slot = slot
+        self.reason = reason
+        self.availability = availability
+        self.refused = refused
 
 
 class WebsiteChangedError(BilkaToGoError):

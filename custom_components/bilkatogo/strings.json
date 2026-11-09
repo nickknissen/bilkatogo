@@ -234,6 +234,21 @@
     },
     "no_items_added": {
       "message": "Bilka added none of the products: {error}"
+    },
+    "pickup_slot_sold_out": {
+      "message": "The pickup slot {slot} is sold out. Your cart keeps its slot."
+    },
+    "pickup_slot_closed": {
+      "message": "The pickup slot {slot} is closed. Your cart keeps its slot."
+    },
+    "pickup_slot_unavailable": {
+      "message": "The pickup slot {slot} cannot be chosen: {error}. Your cart keeps its slot."
+    },
+    "pickup_slot_not_offered": {
+      "message": "Bilka offers no pickup slot on {date} starting at {start} for your cart."
+    },
+    "pickup_slot_ambiguous": {
+      "message": "Several pickup slots on {date} start at {start}. Give the end time too."
     }
   },
   "selector": {
@@ -337,6 +352,28 @@
         "config_entry_id": {
           "name": "Account",
           "description": "The BilkaToGo account to use. Only needed when more than one is added."
+        }
+      }
+    },
+    "choose_pickup_slot": {
+      "name": "Choose pickup slot",
+      "description": "Chooses an open pickup slot for your BilkaToGo cart and returns it with the slot it replaced. It holds nothing: the slot can still sell out until you order on bilkatogo.dk.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Account",
+          "description": "The BilkaToGo account to use. Only needed when more than one is added."
+        },
+        "date": {
+          "name": "Date",
+          "description": "The date of the pickup slot. For a home delivery night slot, the date Bilka lists it on."
+        },
+        "start": {
+          "name": "Start",
+          "description": "When the pickup slot starts."
+        },
+        "end": {
+          "name": "End",
+          "description": "When the pickup slot ends. Only needed when two slots start at the same time."
         }
       }
     }

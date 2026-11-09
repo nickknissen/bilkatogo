@@ -1,0 +1,22 @@
+{
+  "displayDeliveryDate": "2026-11-12",
+  "deliveryDate": "2026-11-12",
+  "deliveryDay": "Tor",
+  "intervalStart": "16:00",
+  "intervalEnd": "18:00",
+  "closed": 0,
+  "delivery_message": "Tor. 12/11. kl. 16:00 - 18:00",
+  "customer_chosen_pickupzone": "1",
+  "message": "",
+  "order_id": "",
+  "stat": {"amount": 0, "price": 0},
+  "lines": [],
+  "blockbit": 0,
+  "hd_available": true,
+  "ageRestrictionEnabled": true,
+  "replacesettings": 7,
+  "eid": -1,
+  "uid": 900001,
+  "tid": "00000000-0000-0000-0000-000000000000",
+  "info_object": null
+}
