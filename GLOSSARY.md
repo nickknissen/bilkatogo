@@ -39,8 +39,8 @@ One ordered product with its quantity inside an Order.
 _Avoid_: Item, row
 
 **Pickup Slot**:
-The date and time window in which the Order is collected or delivered, e.g. Tuesday 20/10, 12:00 to 14:00. Bilka's `deliveryDate` with `deliveryInterval.start` and `end` on an Order; on the Cart, the one chosen there, `deliveryDate.deliveryDate`, `intervalStart` and `intervalEnd`; among the slots Bilka offers, each day's `date` in `AvailableDeliveryDates` with its interval's `intervalStart` and `intervalEnd`. An end at or before the start is on the next day.
-_Avoid_: Delivery interval, time slot, delivery date
+The date and time window in which the Order is collected or delivered, e.g. Tuesday 20/10, 12:00 to 14:00. Bilka's `deliveryDate` with `deliveryInterval.start` and `end` on an Order; on the Cart, the one chosen there, `deliveryDate.deliveryDate`, `intervalStart` and `intervalEnd`; among the slots Bilka offers, each day's `date` in `AvailableDeliveryDates` with its interval's `intervalStart` and `intervalEnd`. An end at or before the start is on the next day. Choosing one in the Cart holds nothing: it can still sell out until the Order is placed.
+_Avoid_: Delivery interval, time slot, delivery date, booked slot
 
 **Slot Availability**:
 Whether a Pickup Slot can still be chosen: open, closed (its order deadline passed, or Bilka closed it otherwise), or sold out. Bilka's `availability_bit`, `closed` and `closed_text` on each day and interval of `AvailableDeliveryDates` (ADR 0006).
