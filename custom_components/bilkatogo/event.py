@@ -1,3 +1,5 @@
+"""Event platform for BilkaToGo."""
+
 from homeassistant.components.event import EventEntity, EventEntityDescription
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -22,7 +24,10 @@ async def async_setup_entry(
     entry: BilkaToGoConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities(BilkaToGoEvent(entry.runtime_data, description) for description in EVENTS)
+    """Set up the BilkaToGo events."""
+    async_add_entities(
+        BilkaToGoEvent(entry.runtime_data, description) for description in EVENTS
+    )
 
 
 class BilkaToGoEvent(BilkaToGoEntity, EventEntity):
@@ -31,6 +36,7 @@ class BilkaToGoEvent(BilkaToGoEntity, EventEntity):
     _fired_for: BilkaToGoData | None = None
 
     async def async_added_to_hass(self) -> None:
+        """Fire what the first update announced once the entity is added."""
         await super().async_added_to_hass()
         # Home Assistant drops states written while the entity is being added.
         self.hass.loop.call_soon(self._fire_announced)

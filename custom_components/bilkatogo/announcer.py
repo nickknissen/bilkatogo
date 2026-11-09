@@ -1,10 +1,12 @@
+"""Remember which Substitutions and Missing Items have been announced."""
+
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from bilkatogo import MissingItem, OrderDetails, Substitution
+
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
-
-from bilkatogo import MissingItem, OrderDetails, Substitution
 
 from .const import DOMAIN
 
@@ -12,6 +14,7 @@ STORAGE_VERSION = 1
 
 
 def substitution_data(substitution: Substitution) -> dict[str, Any]:
+    """Describe a Substitution as event and attribute data."""
     return {
         "original_product": substitution.original_product,
         "original_article_number": substitution.original_article_number,
@@ -27,6 +30,7 @@ def substitution_data(substitution: Substitution) -> dict[str, Any]:
 
 
 def missing_item_data(item: MissingItem) -> dict[str, Any]:
+    """Describe a Missing Item as event and attribute data."""
     return {
         "product": item.product,
         "article_number": item.article_number,
@@ -57,6 +61,7 @@ class Announcer[T]:
         items: Callable[[OrderDetails], Sequence[T]],
         data: Callable[[T], dict[str, Any]],
     ) -> None:
+        """Keep the announced items in the entry's store named by `storage_suffix`."""
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}.{entry_id}.{storage_suffix}"
         )
@@ -69,6 +74,7 @@ class Announcer[T]:
         self._legacy: set[tuple[str, str]] = set()
 
     async def async_load(self) -> None:
+        """Load what was announced before the last restart."""
         data = await self._store.async_load() or {}
         for item in data.get("announced", []):
             if self._key_field in item:
@@ -77,6 +83,7 @@ class Announcer[T]:
                 self._legacy.add((item["order_number"], item[self._legacy_key_field]))
 
     async def async_announce(self, details: OrderDetails) -> list[dict[str, Any]]:
+        """Return the Order's items not announced before, and remember them."""
         order_number = details.order_number
         legacy = {key for number, key in self._legacy if number == order_number}
         self._legacy -= {(order_number, key) for key in legacy}
@@ -110,10 +117,12 @@ class Announcer[T]:
         await self._store.async_save({"announced": announced})
 
     async def async_remove(self) -> None:
+        """Delete the store."""
         await self._store.async_remove()
 
 
 def announcers(hass: HomeAssistant, entry_id: str) -> tuple[Announcer[Any], ...]:
+    """Return the entry's announcers: one for Substitutions, one for Missing Items."""
     return (
         Announcer(
             hass,

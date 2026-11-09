@@ -1,8 +1,12 @@
+"""Sensor platform for BilkaToGo."""
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
+
+from bilkatogo import Order, OrderStatus
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,8 +16,6 @@ from homeassistant.components.sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-
-from bilkatogo import Order, OrderStatus
 
 from .announcer import missing_item_data, substitution_data
 from .const import CURRENCY
@@ -25,6 +27,8 @@ PARALLEL_UPDATES = 0
 
 @dataclass(frozen=True, kw_only=True)
 class BilkaToGoSensorDescription(SensorEntityDescription):
+    """Describe a BilkaToGo sensor by how it reads the coordinator's data."""
+
     value_fn: Callable[[BilkaToGoData], StateType | datetime | Decimal]
     attributes_fn: Callable[[BilkaToGoData], Mapping[str, Any] | None] = lambda _: None
     available_fn: Callable[[BilkaToGoData], bool] = lambda _: True
@@ -129,14 +133,18 @@ SENSORS: tuple[BilkaToGoSensorDescription, ...] = (
         key="pickup_point",
         translation_key="pickup_point",
         value_fn=lambda data: (
-            data.order.pickup_point.name if data.order and data.order.pickup_point else None
+            data.order.pickup_point.name
+            if data.order and data.order.pickup_point
+            else None
         ),
     ),
     BilkaToGoSensorDescription(
         key="pickup_code",
         translation_key="pickup_code",
         value_fn=lambda data: (
-            data.details.pickup_code.code if data.details and data.details.pickup_code else None
+            data.details.pickup_code.code
+            if data.details and data.details.pickup_code
+            else None
         ),
     ),
     BilkaToGoSensorDescription(
@@ -146,7 +154,8 @@ SENSORS: tuple[BilkaToGoSensorDescription, ...] = (
         attributes_fn=lambda data: (
             {
                 "substitutions": [
-                    substitution_data(substitution) for substitution in data.details.substitutions
+                    substitution_data(substitution)
+                    for substitution in data.details.substitutions
                 ]
             }
             if data.details
@@ -158,7 +167,11 @@ SENSORS: tuple[BilkaToGoSensorDescription, ...] = (
         translation_key="missing_items",
         value_fn=lambda data: len(data.details.missing_items) if data.details else None,
         attributes_fn=lambda data: (
-            {"missing_items": [missing_item_data(item) for item in data.details.missing_items]}
+            {
+                "missing_items": [
+                    missing_item_data(item) for item in data.details.missing_items
+                ]
+            }
             if data.details
             else None
         ),
@@ -179,20 +192,30 @@ async def async_setup_entry(
     entry: BilkaToGoConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities(BilkaToGoSensor(entry.runtime_data, description) for description in SENSORS)
+    """Set up the BilkaToGo sensors."""
+    async_add_entities(
+        BilkaToGoSensor(entry.runtime_data, description) for description in SENSORS
+    )
 
 
 class BilkaToGoSensor(BilkaToGoEntity, SensorEntity):
+    """A BilkaToGo sensor."""
+
     entity_description: BilkaToGoSensorDescription
 
     @property
     def available(self) -> bool:
-        return super().available and self.entity_description.available_fn(self.coordinator.data)
+        """Return whether the last update had the data this sensor shows."""
+        return super().available and self.entity_description.available_fn(
+            self.coordinator.data
+        )
 
     @property
     def native_value(self) -> StateType | datetime | Decimal:
+        """Return the sensor's state."""
         return self.entity_description.value_fn(self.coordinator.data)
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Return the sensor's attributes."""
         return self.entity_description.attributes_fn(self.coordinator.data)

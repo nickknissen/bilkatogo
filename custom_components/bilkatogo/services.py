@@ -1,19 +1,8 @@
+"""Actions for BilkaToGo: search, and change the Cart and how it is received."""
+
 from collections.abc import Awaitable, Callable
 from datetime import date, time
 from typing import Any
-
-import probatio
-from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import ATTR_CONFIG_ENTRY_ID
-from homeassistant.core import (
-    HomeAssistant,
-    ServiceCall,
-    ServiceResponse,
-    SupportsResponse,
-    callback,
-)
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers import config_validation as cv
 
 from bilkatogo import (
     BilkaToGoClient,
@@ -35,6 +24,19 @@ from bilkatogo import (
     UnknownPickupPointError,
 )
 from bilkatogo.const import CHOOSABLE_SLOT_DAYS
+import probatio
+
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import ATTR_CONFIG_ENTRY_ID
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+    callback,
+)
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
 from .coordinator import BilkaToGoConfigEntry
@@ -79,7 +81,9 @@ REMOVE_FROM_CART_SCHEMA = probatio.Schema(
     {
         probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         probatio.Required(ATTR_ARTICLE_NUMBER): cv.string,
-        probatio.Optional(ATTR_QUANTITY): probatio.All(probatio.Coerce(int), probatio.Range(min=1)),
+        probatio.Optional(ATTR_QUANTITY): probatio.All(
+            probatio.Coerce(int), probatio.Range(min=1)
+        ),
     }
 )
 
@@ -93,7 +97,9 @@ SEARCH_SCHEMA = probatio.Schema(
         probatio.Optional(ATTR_IN_STOCK, default=False): cv.boolean,
         probatio.Optional(ATTR_ON_OFFER, default=False): cv.boolean,
         probatio.Optional(ATTR_IN_LEAFLET, default=False): cv.boolean,
-        probatio.Optional(ATTR_SORT, default=SearchSort.RELEVANCE): probatio.Coerce(SearchSort),
+        probatio.Optional(ATTR_SORT, default=SearchSort.RELEVANCE): probatio.Coerce(
+            SearchSort
+        ),
     }
 )
 
@@ -110,7 +116,7 @@ ADD_ITEMS_TO_CART_SCHEMA = probatio.Schema(
     {
         probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         probatio.Required(ATTR_ITEMS): probatio.All(
-            cv.ensure_list, probatio.Length(min=1), [ITEM_SCHEMA]
+            probatio.EnsureList(), probatio.Length(min=1), [ITEM_SCHEMA]
         ),
     }
 )
@@ -134,7 +140,9 @@ CHOOSE_PICKUP_POINT_SCHEMA = probatio.Schema(
     }
 )
 
-CHOOSE_HOME_DELIVERY_SCHEMA = probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
+CHOOSE_HOME_DELIVERY_SCHEMA = probatio.Schema(
+    {probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string}
+)
 
 UNAVAILABLE_SLOT_KEYS = {
     SlotAvailability.SOLD_OUT: "pickup_slot_sold_out",
@@ -161,13 +169,19 @@ def _entry(call: ServiceCall) -> BilkaToGoConfigEntry:
         return entry
     entries = hass.config_entries.async_loaded_entries(DOMAIN)
     if not entries:
-        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="no_entry_loaded")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="no_entry_loaded"
+        )
     if len(entries) > 1:
-        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="entry_required")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="entry_required"
+        )
     return entries[0]
 
 
-async def _run[T](call: ServiceCall, action: Callable[[BilkaToGoClient], Awaitable[T]]) -> T:
+async def _run[T](
+    call: ServiceCall, action: Callable[[BilkaToGoClient], Awaitable[T]]
+) -> T:
     entry = _entry(call)
     try:
         return await action(entry.runtime_data.client)
@@ -230,7 +244,9 @@ def _cart_response(cart: Cart) -> dict[str, Any]:
         # A Home Delivery Cart has no Pickup Point, so the home address never shows here.
         "pickup_point": cart.pickup_point.name if cart.pickup_point else None,
         "pickup_slot": _slot_response(cart.pickup_slot),
-        "minimum_order": float(cart.minimum_order) if cart.minimum_order is not None else None,
+        "minimum_order": float(cart.minimum_order)
+        if cart.minimum_order is not None
+        else None,
         "minimum_left": float(cart.minimum_left),
         "next_available_date": cart.next_available_date.isoformat()
         if cart.next_available_date
@@ -259,14 +275,19 @@ def _unavailable_slot_error(err: PickupSlotUnavailableError) -> ServiceValidatio
     else:
         return _not_offered(slot.date, slot.start)
     return ServiceValidationError(
-        translation_domain=DOMAIN, translation_key=key, translation_placeholders=placeholders
+        translation_domain=DOMAIN,
+        translation_key=key,
+        translation_placeholders=placeholders,
     )
 
 
 def _slot_response(slot: PickupSlot | None) -> dict[str, Any] | None:
     if slot is None:
         return None
-    return {"starts_at": slot.starts_at.isoformat(), "ends_at": slot.ends_at.isoformat()}
+    return {
+        "starts_at": slot.starts_at.isoformat(),
+        "ends_at": slot.ends_at.isoformat(),
+    }
 
 
 def _product_response(product: Product) -> dict[str, Any]:
@@ -276,14 +297,18 @@ def _product_response(product: Product) -> dict[str, Any]:
         "name": product.name,
         "brand": product.brand,
         "price": float(product.price),
-        "unit_price": float(product.unit_price) if product.unit_price is not None else None,
+        "unit_price": float(product.unit_price)
+        if product.unit_price is not None
+        else None,
         "unit": product.unit,
         "in_stock": product.in_stock,
         "deliverable": product.deliverable,
         "offer": {
             "label": offer.label,
             "price": float(offer.price),
-            "unit_price": float(offer.unit_price) if offer.unit_price is not None else None,
+            "unit_price": float(offer.unit_price)
+            if offer.unit_price is not None
+            else None,
             "ends": offer.ends.isoformat() if offer.ends else None,
             "limit_per_customer": offer.limit_per_customer,
         }
@@ -296,7 +321,9 @@ def _product_response(product: Product) -> dict[str, Any]:
 async def _add_to_cart(call: ServiceCall) -> ServiceResponse:
     cart = await _run(
         call,
-        lambda client: client.add_to_cart(call.data[ATTR_ARTICLE_NUMBER], call.data[ATTR_QUANTITY]),
+        lambda client: client.add_to_cart(
+            call.data[ATTR_ARTICLE_NUMBER], call.data[ATTR_QUANTITY]
+        ),
     )
     return _cart_response(cart) if call.return_response else None
 
@@ -312,8 +339,11 @@ async def _remove_from_cart(call: ServiceCall) -> ServiceResponse:
 
 
 async def _add_items_to_cart(call: ServiceCall) -> ServiceResponse:
-    """Adds each item in turn. Items Bilka rejects or skips are in the response; the action
-    fails only when none was added."""
+    """Add each item in turn.
+
+    Items Bilka rejects or skips are in the response; the action fails only when none
+    was added.
+    """
     items: dict[str, int] = {}
     for item in call.data[ATTR_ITEMS]:
         article_number = item[ATTR_ARTICLE_NUMBER]
@@ -383,7 +413,10 @@ async def _choose_pickup_slot(call: ServiceCall) -> ServiceResponse:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="pickup_slot_ambiguous",
-                translation_placeholders={"date": day.isoformat(), "start": f"{start:%H:%M}"},
+                translation_placeholders={
+                    "date": day.isoformat(),
+                    "start": f"{start:%H:%M}",
+                },
             )
         return await client.choose_pickup_slot(matches[0].slot)
 
@@ -400,8 +433,10 @@ async def _choose_pickup_slot(call: ServiceCall) -> ServiceResponse:
 
 
 def _place_response(cart: Cart) -> dict[str, Any]:
-    """Where the Cart is received, by its Pickup Point's name or as Home Delivery: never the
-    Home Address."""
+    """Describe where the Cart is received.
+
+    That is its Pickup Point's name or Home Delivery: never the Home Address.
+    """
     return {
         "pickup_point": cart.pickup_point.name if cart.pickup_point else None,
         "home_delivery": cart.home_delivery,
@@ -427,7 +462,9 @@ def _delivery_change_response(change: DeliveryChange) -> dict[str, Any]:
         "changed": change.changed,
         "before": _place_response(change.before),
         "after": _place_response(after),
-        "minimum_order": float(after.minimum_order) if after.minimum_order is not None else None,
+        "minimum_order": float(after.minimum_order)
+        if after.minimum_order is not None
+        else None,
         "unavailable": [
             {**_line_response(line), "reason": line.unavailable_reason}
             for line in change.unavailable
@@ -455,13 +492,16 @@ async def _choose_pickup_point(call: ServiceCall) -> ServiceResponse:
 
 
 async def _choose_home_delivery(call: ServiceCall) -> ServiceResponse:
-    """Moves the Cart to Home Delivery at the remembered Home Address, then refreshes the
-    entities."""
+    """Move the Cart to Home Delivery, then refresh the entities.
+
+    Bilka delivers to the Home Address it remembers.
+    """
     return await _move_cart(call, lambda client: client.choose_home_delivery())
 
 
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
+    """Register the BilkaToGo actions."""
     hass.services.async_register(
         DOMAIN,
         SERVICE_ADD_TO_CART,

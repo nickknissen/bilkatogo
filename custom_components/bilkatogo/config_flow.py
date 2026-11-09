@@ -1,15 +1,7 @@
+"""Config flow for BilkaToGo."""
+
 from collections.abc import Mapping
 from typing import Any
-
-import probatio
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.helpers.httpx_client import create_async_httpx_client
-from homeassistant.helpers.selector import (
-    TextSelector,
-    TextSelectorConfig,
-    TextSelectorType,
-)
 
 from bilkatogo import (
     REQUEST_TIMEOUT_SECONDS,
@@ -18,6 +10,16 @@ from bilkatogo import (
     BilkaToGoError,
     BilkaUnreachableError,
     InvalidCredentialsError,
+)
+import probatio
+
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.helpers.httpx_client import create_async_httpx_client
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import DOMAIN, LOGGER
@@ -37,10 +39,15 @@ REAUTH_SCHEMA = probatio.Schema({probatio.Required(CONF_PASSWORD): PASSWORD_SELE
 
 
 class BilkaToGoConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Log in to a BilkaToGo account with its email and password."""
+
     VERSION = 1
     MINOR_VERSION = 2
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the account's email and password."""
         errors: dict[str, str] = {}
         if user_input is not None:
             email = user_input[CONF_EMAIL].strip()
@@ -58,12 +65,16 @@ class BilkaToGoConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> ConfigFlowResult:
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Start reauthentication after Bilka rejected the stored password."""
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Ask for the account's new password."""
         entry = self._get_reauth_entry()
         email = entry.data[CONF_EMAIL]
         errors: dict[str, str] = {}
@@ -85,13 +96,15 @@ class BilkaToGoConfigFlow(ConfigFlow, domain=DOMAIN):
         client = BilkaToGoClient(
             email,
             password,
-            httpx_client=create_async_httpx_client(self.hass, timeout=REQUEST_TIMEOUT_SECONDS),
+            httpx_client=create_async_httpx_client(
+                self.hass, timeout=REQUEST_TIMEOUT_SECONDS
+            ),
         )
         try:
             await client.login()
         except InvalidCredentialsError:
             return {"base": "invalid_auth"}
-        except (BilkaUnreachableError, BilkaBusyError):
+        except BilkaUnreachableError, BilkaBusyError:
             return {"base": "cannot_connect"}
         except BilkaToGoError:
             LOGGER.exception("Unexpected answer from Bilka while logging in")

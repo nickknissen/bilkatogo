@@ -1,3 +1,5 @@
+"""Constants for the BilkaToGo integration."""
+
 from datetime import timedelta
 from logging import getLogger
 
