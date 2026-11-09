@@ -45,3 +45,12 @@ Replace before committing: name, email, address, phone, Pickup Code, real Order 
 ## Finding a Product with a limit per customer
 
 Query Algolia (constants in `src/bilkatogo/const.py`) with `isInAssortmentIn:<sid> AND nonsearchable:false` and check `storeData[<sid>].offerMax > 0`. Algolia returns at most 1,000 hits per query, so an empty result over the whole assortment is not proof; split the query by category or text.
+
+## Open questions
+
+Assumptions from the v1 to v3 plans (2026-10-26) that no capture has settled yet. The needs-info issues (#27 to #29) hold the others. Answer one when a capture shows it, and say which.
+
+- **Substitutions after "Pakket".** The integration fires one event per new Substitution and assumes Bilka doesn't change them once the Order is Packed. Compare an Order's `OrderDetails` at Packed and after Picked Up.
+- **`packedPrice` of a Cancelled or Sold Out Order.** It may be 0, which the Order Total sensor would show as the total.
+- **Prices per Store.** The model reads Price and Offer from `storeData[<sid>]` on the assumption that Stores can differ. Every captured Product has the same Price at every Store it lists.
+- **`fullCart=1` on `ChangeLineCount`.** Whether it answers with the Cart and saves the read after every change.
