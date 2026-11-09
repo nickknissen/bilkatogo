@@ -105,9 +105,22 @@ asyncio.run(main())
   `days_without_slots` maps each day without slots to Bilka's reason, e.g. "udsolgt", empty
   when it gives none. `next_open` is the earliest open slot, `chosen` the slot chosen in the
   Cart while it lies ahead, and `pickup_point` and `home_delivery` say what the slots are for.
-  It reads the Cart and Bilka's `AvailableDeliveryDates`; it never chooses a slot (ADR 0006).
-  A Home Delivery night slot runs from 00:00 to 06:00 on its date: Bilka delivers it the night
-  before. A `PickupSlot` whose end is at or before its start ends the next day.
+  `starting_at(day, start)` lists the slots on a day that start at a time. It reads the Cart
+  and Bilka's `AvailableDeliveryDates`. A Home Delivery night slot runs from 00:00 to 06:00 on
+  its date: Bilka delivers it the night before. A `PickupSlot` whose end is at or before its
+  start ends the next day.
+- `choose_pickup_slot(slot)` chooses the Cart's Pickup Slot (ADR 0008). The slot must be one
+  `get_pickup_slots(days=14)` lists as open, with the same date, start and end. A Home Delivery
+  night slot is chosen as listed, e.g. `PickupSlot(date(2026, 11, 12), time(0), time(6))`. It
+  returns a `ChosenPickupSlot`: the `chosen` slot, the one it `replaced` (`None` when the Cart
+  had none ahead) and `changed`, which is `False` when the slot was already chosen and nothing
+  was sent, even if it has sold out since. A slot that is not listed, closed or sold out raises
+  `PickupSlotUnavailableError` without changing anything. The error has the `slot`, a `reason`
+  and the listed `availability`. When Bilka refuses the slot itself, e.g. because it sold out
+  in between, `refused` is `True`, the `reason` is Bilka's message and the Cart keeps its slot. Choosing holds nothing: the slot
+  can still sell out until the Order is placed, and a slot given up can sell out too, so keep
+  `replaced` if you may want to go back. The Pickup Point or Home Delivery is still chosen on
+  bilkatogo.dk.
 - `set_cart_quantity(article_number, quantity)` sets how many of a Product the Cart holds (0
   removes the Cart Line), `add_to_cart(article_number, quantity=1)` adds to what is there,
   `remove_from_cart(article_number, quantity=None)` takes `quantity` off what is there (the whole

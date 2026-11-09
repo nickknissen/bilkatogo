@@ -96,6 +96,11 @@ class PickupSlots(BilkaDataClass):
         """The Pickup Slots that can still be chosen."""
         return [slot for slot in self.slots if slot.availability is SlotAvailability.OPEN]
 
+    def starting_at(self, day: date, start: time) -> list[AvailablePickupSlot]:
+        """The Pickup Slots on `day` that start at `start`, of any availability. Every capture
+        has at most one."""
+        return [slot for slot in self.slots if (slot.slot.date, slot.slot.start) == (day, start)]
+
     @property
     def next_open(self) -> AvailablePickupSlot | None:
         """The earliest Pickup Slot that can still be chosen."""
@@ -132,6 +137,19 @@ class PickupSlots(BilkaDataClass):
             pickup_point=cart.pickup_point,
             home_delivery=cart.home_delivery,
         )
+
+
+@dataclass
+class ChosenPickupSlot(BilkaDataClass):
+    """The Cart's Pickup Slot after choosing one. Choosing holds nothing: the slot can still
+    sell out until the Order is placed."""
+
+    chosen: PickupSlot
+    replaced: PickupSlot | None
+    """The slot the Cart had before, while it lay ahead; None when it had none. The same as
+    `chosen` when that was chosen already."""
+    changed: bool
+    """False when the slot was chosen already and nothing was sent to Bilka."""
 
 
 def _dicts(value: Any) -> list[dict[str, Any]]:

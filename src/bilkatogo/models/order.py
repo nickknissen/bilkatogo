@@ -44,6 +44,9 @@ class PickupSlot(BilkaDataClass):
     end: time
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
+    def __str__(self) -> str:
+        return f"{self.date.isoformat()} {self.start:%H:%M}-{self.end:%H:%M}"
+
     @property
     def starts_at(self) -> datetime:
         return datetime.combine(self.date, self.start, BILKA_TIME_ZONE)
@@ -69,7 +72,8 @@ class PickupSlot(BilkaDataClass):
 
     @classmethod
     def from_cart(cls, data: dict[str, Any]) -> PickupSlot | None:
-        """The Pickup Slot in the Cart's `deliveryDate`; None when any part is missing."""
+        """The Pickup Slot in the Cart's `deliveryDate`, or at the top of `SetDeliveryDate`'s
+        answer, which has the same shape; None when any part is missing."""
         try:
             return cls(
                 _raw=data,

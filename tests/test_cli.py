@@ -1213,6 +1213,164 @@ def test_pickup_slots_json(
     assert (slots["pickup_point"], slots["home_delivery"]) == (None, True)
 
 
+def test_pickup_slots_choose_prints_the_chosen_and_replaced_slot(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    logged_in_cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-11")
+
+    result = invoke(
+        "pickup-slots", "choose", "2026-11-09", "16:00", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines() == [
+        "Chosen    Mon 09/11 16:00-18:00",
+        "Replaced  Wed 11/11 14:00-16:00",
+    ]
+    [request] = logged_in_cart.calls("set_delivery_date")
+    assert request.url.params["intervalEnd"] == "18:00"
+
+
+def test_pickup_slots_choose_without_a_slot_before(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+
+    result = invoke(
+        "pickup-slots", "choose", "2026-11-10", "8:00", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines() == ["Chosen    Tue 10/11 08:00-10:00", "Replaced  none"]
+
+
+def test_pickup_slots_choose_the_chosen_slot_says_so(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    logged_in_cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-09")
+
+    result = invoke(
+        "pickup-slots", "choose", "2026-11-09", "14:00", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines() == ["Chosen    Mon 09/11 14:00-16:00 (already chosen)"]
+    assert logged_in_cart.calls("set_delivery_date") == []
+
+
+def test_pickup_slots_choose_json(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+
+    result = invoke(
+        "pickup-slots",
+        "choose",
+        "2026-11-09",
+        "16:00",
+        "--json",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output) == {
+        "chosen": {"date": "2026-11-09", "start": "16:00:00", "end": "18:00:00"},
+        "replaced": None,
+        "changed": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (
+            ["2026-11-09", "08:00"],
+            "Could not choose the pickup slot: "
+            "The Pickup Slot 2026-11-09 08:00-10:00 cannot be chosen: it is sold out",
+        ),
+        (["2026-11-09", "09:00"], "No Pickup Slot on Mon 09/11 starts at 09:00."),
+        (["2026-11-09", "16:00", "--end", "17:00"], "Bilka does not offer it"),
+        (["9/11", "16:00"], "'9/11' is not a date like 2026-11-12."),
+        (["2026-11-09", "4pm"], "'4pm' is not a time like 16:00."),
+    ],
+)
+def test_pickup_slots_choose_fails_cleanly(
+    invoke,
+    logged_in_cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+    args: list[str],
+    message: str,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+
+    result = invoke("pickup-slots", "choose", *args, "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code != 0
+    assert message in result.output
+    assert "Traceback" not in result.output
+    assert logged_in_cart.calls("set_delivery_date") == []
+
+
+def test_pickup_slots_choose_a_closed_slot_fails_cleanly(
+    invoke, home_delivery_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(HOME_CAPTURED)
+
+    result = invoke(
+        "pickup-slots", "choose", "2026-11-02", "00:00", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 1
+    assert result.output.strip() == (
+        "Could not choose the pickup slot: "
+        "The Pickup Slot 2026-11-02 00:00-06:00 cannot be chosen: it is closed"
+    )
+    assert home_delivery_cart.calls("set_delivery_date") == []
+
+
+def test_pickup_slots_choose_when_bilka_refuses_the_slot(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    logged_in_cart.script("set_delivery_date", load_fixture("set_delivery_date_unavailable.json"))
+
+    result = invoke(
+        "pickup-slots", "choose", "2026-11-09", "16:00", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 1
+    assert result.output.strip() == (
+        "Could not choose the pickup slot: The Pickup Slot 2026-11-09 16:00-18:00 cannot be "
+        "chosen: Det valgte tidspunkt er ikke tilgængelig"
+    )
+
+
+@pytest.mark.parametrize("option", [["--json"], ["--raw"], ["--days", "3"]])
+def test_pickup_slots_listing_options_before_choose_are_an_error(
+    invoke, logged_in_cart: FakeBilka, option: list[str]
+) -> None:
+    result = invoke(
+        "pickup-slots",
+        *option,
+        "choose",
+        "2026-11-09",
+        "16:00",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+    )
+
+    assert result.exit_code == 1
+    assert "pickup-slots choose" in result.output
+    assert logged_in_cart.requests == []
+
+
 def test_recipes_shows_this_weeks_madplan_without_logging_in(invoke, bilka: FakeBilka) -> None:
     result = invoke("recipes")
 

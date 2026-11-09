@@ -234,6 +234,21 @@
     },
     "no_items_added": {
       "message": "Bilka lagde ingen af varerne i kurven: {error}"
+    },
+    "pickup_slot_sold_out": {
+      "message": "Afhentningstidspunktet {slot} er udsolgt. Din kurv beholder sit tidspunkt."
+    },
+    "pickup_slot_closed": {
+      "message": "Afhentningstidspunktet {slot} er lukket. Din kurv beholder sit tidspunkt."
+    },
+    "pickup_slot_unavailable": {
+      "message": "Afhentningstidspunktet {slot} kan ikke vælges: {error}. Din kurv beholder sit tidspunkt."
+    },
+    "pickup_slot_not_offered": {
+      "message": "Bilka tilbyder intet afhentningstidspunkt den {date} kl. {start} til din kurv."
+    },
+    "pickup_slot_ambiguous": {
+      "message": "Flere afhentningstidspunkter den {date} starter kl. {start}. Angiv også sluttidspunktet."
     }
   },
   "selector": {
@@ -337,6 +352,28 @@
         "config_entry_id": {
           "name": "Konto",
           "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
+        }
+      }
+    },
+    "choose_pickup_slot": {
+      "name": "Vælg afhentningstidspunkt",
+      "description": "Vælger et ledigt afhentningstidspunkt til din BilkaToGo-kurv og returnerer det sammen med det tidspunkt, det erstattede. Det reserverer intet: tidspunktet kan stadig blive udsolgt, indtil du bestiller på bilkatogo.dk.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Konto",
+          "description": "BilkaToGo-kontoen, der skal bruges. Kun nødvendig, hvis der er tilføjet mere end én."
+        },
+        "date": {
+          "name": "Dato",
+          "description": "Afhentningstidspunktets dato. For en nattelevering den dato, Bilka viser den under."
+        },
+        "start": {
+          "name": "Start",
+          "description": "Hvornår afhentningstidspunktet starter."
+        },
+        "end": {
+          "name": "Slut",
+          "description": "Hvornår afhentningstidspunktet slutter. Kun nødvendig, hvis to tidspunkter starter samtidig."
         }
       }
     }

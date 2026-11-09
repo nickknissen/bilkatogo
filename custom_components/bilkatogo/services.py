@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from datetime import date, time
 from typing import Any
 
 import probatio
@@ -20,11 +21,16 @@ from bilkatogo import (
     Cart,
     CartChangeRejectedError,
     CartChangeStatus,
+    ChosenPickupSlot,
     InvalidCredentialsError,
     NoPickupPointError,
+    PickupSlot,
+    PickupSlotUnavailableError,
     Product,
     SearchSort,
+    SlotAvailability,
 )
+from bilkatogo.const import CHOOSABLE_SLOT_DAYS
 
 from .const import DOMAIN
 from .coordinator import BilkaToGoConfigEntry
@@ -34,6 +40,7 @@ SERVICE_ADD_ITEMS_TO_CART = "add_items_to_cart"
 SERVICE_REMOVE_FROM_CART = "remove_from_cart"
 SERVICE_SEARCH = "search"
 SERVICE_GET_CART = "get_cart"
+SERVICE_CHOOSE_PICKUP_SLOT = "choose_pickup_slot"
 
 ATTR_ARTICLE_NUMBER = "article_number"
 ATTR_QUANTITY = "quantity"
@@ -44,6 +51,9 @@ ATTR_IN_STOCK = "in_stock"
 ATTR_ON_OFFER = "on_offer"
 ATTR_IN_LEAFLET = "in_leaflet"
 ATTR_SORT = "sort"
+ATTR_DATE = "date"
+ATTR_START = "start"
+ATTR_END = "end"
 
 DEFAULT_SEARCH_LIMIT = 10
 
@@ -100,6 +110,21 @@ ADD_ITEMS_TO_CART_SCHEMA = probatio.Schema(
 
 GET_CART_SCHEMA = probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
 
+# `end` is only needed when two Pickup Slots on the date start at the same time.
+CHOOSE_PICKUP_SLOT_SCHEMA = probatio.Schema(
+    {
+        probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        probatio.Required(ATTR_DATE): cv.date,
+        probatio.Required(ATTR_START): cv.time,
+        probatio.Optional(ATTR_END): cv.time,
+    }
+)
+
+UNAVAILABLE_SLOT_KEYS = {
+    SlotAvailability.SOLD_OUT: "pickup_slot_sold_out",
+    SlotAvailability.CLOSED: "pickup_slot_closed",
+}
+
 
 def _entry(call: ServiceCall) -> BilkaToGoConfigEntry:
     hass = call.hass
@@ -143,6 +168,8 @@ async def _run[T](call: ServiceCall, action: Callable[[BilkaToGoClient], Awaitab
             translation_key="cart_change_rejected",
             translation_placeholders={"error": str(err)},
         ) from err
+    except PickupSlotUnavailableError as err:
+        raise _unavailable_slot_error(err) from err
     except NoPickupPointError as err:
         raise HomeAssistantError(
             translation_domain=DOMAIN, translation_key="no_pickup_point"
@@ -176,12 +203,7 @@ def _cart_response(cart: Cart) -> dict[str, Any]:
         "home_delivery": cart.home_delivery,
         # A Home Delivery Cart has no Pickup Point, so the home address never shows here.
         "pickup_point": cart.pickup_point.name if cart.pickup_point else None,
-        "pickup_slot": {
-            "starts_at": cart.pickup_slot.starts_at.isoformat(),
-            "ends_at": cart.pickup_slot.ends_at.isoformat(),
-        }
-        if cart.pickup_slot
-        else None,
+        "pickup_slot": _slot_response(cart.pickup_slot),
         "minimum_order": float(cart.minimum_order) if cart.minimum_order is not None else None,
         "minimum_left": float(cart.minimum_left),
         "next_available_date": cart.next_available_date.isoformat()
@@ -189,6 +211,36 @@ def _cart_response(cart: Cart) -> dict[str, Any]:
         else None,
         "warnings": list(cart.warnings),
     }
+
+
+def _not_offered(day: date, start: time) -> ServiceValidationError:
+    return ServiceValidationError(
+        translation_domain=DOMAIN,
+        translation_key="pickup_slot_not_offered",
+        translation_placeholders={"date": day.isoformat(), "start": f"{start:%H:%M}"},
+    )
+
+
+def _unavailable_slot_error(err: PickupSlotUnavailableError) -> ServiceValidationError:
+    """Listed as closed or sold out, refused by Bilka with its own message, or not offered."""
+    slot = err.slot
+    if err.availability in UNAVAILABLE_SLOT_KEYS:
+        key = UNAVAILABLE_SLOT_KEYS[err.availability]
+        placeholders = {"slot": str(slot)}
+    elif err.refused:
+        key = "pickup_slot_unavailable"
+        placeholders = {"slot": str(slot), "error": err.reason}
+    else:
+        return _not_offered(slot.date, slot.start)
+    return ServiceValidationError(
+        translation_domain=DOMAIN, translation_key=key, translation_placeholders=placeholders
+    )
+
+
+def _slot_response(slot: PickupSlot | None) -> dict[str, Any] | None:
+    if slot is None:
+        return None
+    return {"starts_at": slot.starts_at.isoformat(), "ends_at": slot.ends_at.isoformat()}
 
 
 def _product_response(product: Product) -> dict[str, Any]:
@@ -287,6 +339,39 @@ async def _get_cart(call: ServiceCall) -> ServiceResponse:
     return _cart_response(await _run(call, lambda client: client.get_cart()))
 
 
+async def _choose_pickup_slot(call: ServiceCall) -> ServiceResponse:
+    """Chooses the Cart's Pickup Slot by its date and start, then refreshes the entities."""
+    day: date = call.data[ATTR_DATE]
+    start: time = call.data[ATTR_START]
+    end: time | None = call.data.get(ATTR_END)
+
+    async def choose(client: BilkaToGoClient) -> ChosenPickupSlot:
+        if end is not None:
+            return await client.choose_pickup_slot(PickupSlot(day, start, end))
+        slots = await client.get_pickup_slots(days=CHOOSABLE_SLOT_DAYS)
+        matches = slots.starting_at(day, start)
+        if not matches:
+            raise _not_offered(day, start)
+        if len(matches) > 1:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="pickup_slot_ambiguous",
+                translation_placeholders={"date": day.isoformat(), "start": f"{start:%H:%M}"},
+            )
+        return await client.choose_pickup_slot(matches[0].slot)
+
+    result = await _run(call, choose)
+    # The Next available pickup slot sensor and the Cart's slot follow the change.
+    await _entry(call).runtime_data.async_request_refresh()
+    if not call.return_response:
+        return None
+    return {
+        "chosen": _slot_response(result.chosen),
+        "replaced": _slot_response(result.replaced),
+        "changed": result.changed,
+    }
+
+
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
@@ -323,4 +408,11 @@ def async_setup_services(hass: HomeAssistant) -> None:
         _get_cart,
         schema=GET_CART_SCHEMA,
         supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CHOOSE_PICKUP_SLOT,
+        _choose_pickup_slot,
+        schema=CHOOSE_PICKUP_SLOT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )

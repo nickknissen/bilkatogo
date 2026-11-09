@@ -4,7 +4,7 @@
 bilkatogo.dk and pick the order up at a Bilka store, or have it delivered. The integration follows
 your Current Order in Home Assistant: its Order Status, Pickup Slot, Pickup Code and Order Total,
 which products Bilka substituted or left out, and a calendar of your Pickup Slots. Actions
-search Bilka's products and add them to your Cart.
+search Bilka's products, add them to your Cart and choose its Pickup Slot.
 
 See the [README](../README.md) for the Python library and the command line tool.
 
@@ -86,9 +86,9 @@ not know yet; the code is in the attribute. Without any order the entities have 
 
 Next available pickup slot follows whatever your Cart has on bilkatogo.dk, its Pickup Point or
 Home Delivery, not the Current Order. It has no state when every slot in the next 7 days is
-closed or sold out; the number of open slots is then 0. The integration never chooses a slot:
-do that on bilkatogo.dk. A Home Delivery night slot starts at 00:00 on its date, and Bilka
-delivers it from the evening before.
+closed or sold out; the number of open slots is then 0. The `bilkatogo.choose_pickup_slot`
+action chooses one of the open slots for your Cart. A Home Delivery night slot starts at
+00:00 on its date, and Bilka delivers it from the evening before.
 
 The calendar holds an event for each of your 20 most recent Orders that has a Pickup Slot,
 upcoming and past, except Cancelled and Sold Out Orders. An event spans the Pickup Slot, is
@@ -105,6 +105,16 @@ Order Status sensor shows the status.
 | `bilkatogo.remove_from_cart` | `article_number`, `quantity` (default: all of it) | Optional: the Cart, as for `add_to_cart` |
 | `bilkatogo.search` | `query`, `limit` (default 10), `in_stock`, `on_offer`, `in_leaflet` (default false), `sort` (`relevance`, `price`, `unit_price`) | `products`: Article Number, name, brand, Price, Unit Price and unit, in stock, Offer and Multibuy Offer |
 | `bilkatogo.get_cart` | none | The Cart, as for `add_to_cart`, without changing it |
+| `bilkatogo.choose_pickup_slot` | `date`, `start`, `end` (only when two slots start at the same time) | Optional: `chosen` and `replaced` (each `starts_at` and `ends_at`; `replaced` is `null` when the Cart had no slot ahead) and `changed` (`false` when the slot was already chosen) |
+
+`choose_pickup_slot` chooses one of the open Pickup Slots in the next 14 days for your Cart,
+for its Pickup Point or Home Delivery. A Home Delivery night slot is chosen by the date it is
+listed under, starting at 00:00. Choosing holds nothing: the slot can still sell out until you
+place the Order on bilkatogo.dk. A slot you give up can sell out too, so the response names the
+slot it replaced. A closed, sold-out or unknown slot, or one Bilka refuses, fails with a
+message saying so, and the Cart keeps its slot. Afterwards the integration updates its
+entities, so Next available pickup slot follows. The Pickup Point or Home Delivery is still
+chosen on bilkatogo.dk.
 
 `add_to_cart` adds to what is already in the Cart and `remove_from_cart` takes `quantity` off
 it, or the whole Cart Line without one; neither places an Order. In the Cart response
@@ -245,8 +255,9 @@ automation:
 - The Pickup Code, Substitutions, Missing Items and the Order Total breakdown are only known
   once the order is packed.
 - The Home Delivery address is left out of entities and the calendar, as it is personal.
-- `add_to_cart` and `search` need a Pickup Point chosen on bilkatogo.dk. The integration never
-  places, changes or cancels an order.
+- `add_to_cart` and `search` need a Pickup Point chosen on bilkatogo.dk. The actions change
+  the Cart, its Cart Lines and Pickup Slot, but the Pickup Point is still chosen on
+  bilkatogo.dk. The integration never places, changes or cancels an order.
 
 ## Troubleshooting
 

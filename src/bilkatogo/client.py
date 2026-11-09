@@ -18,6 +18,7 @@ from .const import (
     CART_CHANGE_PAUSE_SECONDS,
     CART_CHANGE_RETRY_DELAYS,
     CART_PARAMS,
+    CHOOSABLE_SLOT_DAYS,
     CURRENT_ORDER_SCAN_LIMIT,
     GIGYA_API_KEY,
     GIGYA_BASE_URL,
@@ -41,6 +42,7 @@ from .exceptions import (
     InvalidCredentialsError,
     NoPickupPointError,
     OrderNotFoundError,
+    PickupSlotUnavailableError,
     UnexpectedResponseError,
     UnknownPickupPointError,
 )
@@ -49,14 +51,17 @@ from .models import (
     CartChange,
     CartChanges,
     CartChangeStatus,
+    ChosenPickupSlot,
     Order,
     OrderDetails,
     OrderHistory,
     PickupPoint,
+    PickupSlot,
     PickupSlots,
     Product,
     RecipeDetails,
     SearchSort,
+    SlotAvailability,
 )
 from .models.cart import cart_pickup_point, cart_store_id
 from .models.product import product_attributes, sort_products
@@ -69,6 +74,25 @@ def _order_number(order: str | Order) -> str:
 
 def _quantity_in(cart: Cart, article_number: str) -> int:
     return sum(line.quantity for line in cart.lines if line.article_number == article_number)
+
+
+def _same_slot(one: PickupSlot, other: PickupSlot) -> bool:
+    """Whether two Pickup Slots are the same date and times, wherever they were read from."""
+    return (one.date, one.start, one.end) == (other.date, other.start, other.end)
+
+
+def _check_slot_chosen(answer: dict[str, Any], slot: PickupSlot) -> None:
+    """Raise unless SetDeliveryDate's answer confirms `slot`: `eid: -1` and the slot in its
+    `deliveryDate`, `intervalStart` and `intervalEnd`."""
+    if answer.get("eid") != -1:
+        if message := answer.get("msg"):
+            raise PickupSlotUnavailableError(slot, str(message), refused=True)
+        raise UnexpectedResponseError("SetDeliveryDate answered without eid -1")
+    chosen = PickupSlot.from_cart(answer)
+    if chosen is None:
+        raise UnexpectedResponseError("SetDeliveryDate answered without a Pickup Slot")
+    if not _same_slot(chosen, slot):
+        raise UnexpectedResponseError(f"SetDeliveryDate answered with {chosen}, not {slot}")
 
 
 def _is_error_body(data: dict[str, Any]) -> bool:
@@ -383,7 +407,8 @@ class BilkaToGoClient:
 
     async def get_pickup_slots(self, *, days: int = 7) -> PickupSlots:
         """The Pickup Slots of the next `days` days, today included, with their availability,
-        for what the Cart has: its Pickup Point or Home Delivery. Never chooses one."""
+        for what the Cart has: its Pickup Point or Home Delivery. `choose_pickup_slot` chooses
+        one."""
         if days < 1:
             raise ValueError("days must be 1 or more")
         cart = await self.get_cart()
@@ -397,6 +422,43 @@ class BilkaToGoClient:
 
     async def get_pickup_slots_json(self) -> dict[str, Any]:
         return await self._shop("GET", "shop/v3/AvailableDeliveryDates", {})
+
+    async def choose_pickup_slot(self, slot: PickupSlot) -> ChosenPickupSlot:
+        """Choose the Cart's Pickup Slot among the open ones `get_pickup_slots` lists for
+        the next 14 days (ADR 0008). Choosing holds nothing: the slot can still sell out
+        until the Order is placed on bilkatogo.dk. The slot already chosen is returned as it
+        is, without asking Bilka, even when it has sold out since."""
+        slots = await self.get_pickup_slots(days=CHOOSABLE_SLOT_DAYS)
+        if slots.chosen is not None and _same_slot(slots.chosen, slot):
+            return ChosenPickupSlot(chosen=slots.chosen, replaced=slots.chosen, changed=False)
+        listed = next((offered for offered in slots.slots if _same_slot(offered.slot, slot)), None)
+        if listed is None:
+            raise PickupSlotUnavailableError(
+                slot,
+                f"Bilka does not offer it for the Cart in the next {CHOOSABLE_SLOT_DAYS} days",
+            )
+        if listed.availability is not SlotAvailability.OPEN:
+            raise PickupSlotUnavailableError(
+                slot,
+                f"it is {listed.availability.value.replace('_', ' ')}",
+                listed.availability,
+            )
+        try:
+            answer = await self._shop(
+                "GET",
+                "shop/v3/SetDeliveryDate",
+                {
+                    "deliveryDate": slot.date.isoformat(),
+                    "intervalStart": f"{slot.start:%H:%M}",
+                    "intervalEnd": f"{slot.end:%H:%M}",
+                },
+            )
+        except _ShopRefusedError as refused:
+            # A slot that closed or sold out since it was listed: `eid` 406, "Det valgte
+            # tidspunkt er ikke tilgængelig", and the Cart keeps its slot (captured 2026-11-09).
+            raise PickupSlotUnavailableError(slot, refused.reason, refused=True) from refused
+        _check_slot_chosen(answer, slot)
+        return ChosenPickupSlot(chosen=listed.slot, replaced=slots.chosen, changed=True)
 
     async def search(
         self,

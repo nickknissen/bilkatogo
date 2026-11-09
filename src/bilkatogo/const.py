@@ -19,6 +19,8 @@ ORDER_HISTORY_PAGE_SIZE = 20
 ORDER_HISTORY_PARAMS = {"muah": 1, "ordertype": "dibs,pgw"}
 CART_PARAMS = {"extra": "deliveryAddress,deliveryDate"}
 CURRENT_ORDER_SCAN_LIMIT = 20
+# How many days ahead, today included, a Pickup Slot is looked for when choosing one.
+CHOOSABLE_SLOT_DAYS = 14
 # Several Cart changes go one after another, a pause apart, like a person clicking. A change
 # that Bilka does not answer, or answers with HTTP 429 or 5xx, is retried after each delay;
 # the quantity is absolute, so repeating it is safe.

@@ -90,3 +90,24 @@ get_cart:
       selector:
         config_entry:
           integration: bilkatogo
+
+choose_pickup_slot:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: bilkatogo
+    date:
+      required: true
+      example: "2026-11-12"
+      selector:
+        date:
+    start:
+      required: true
+      example: "16:00"
+      selector:
+        time:
+    end:
+      example: "18:00"
+      selector:
+        time:

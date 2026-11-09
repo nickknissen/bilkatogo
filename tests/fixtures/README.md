@@ -6,6 +6,13 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
 
 - `order_details_missing.json`: a Missing Item with the invented field `unavailable_quantity`.
   To be replaced by a real capture (#27).
+- `set_delivery_date.json` and `set_delivery_date_unavailable.json`: `GET shop/v3/SetDeliveryDate`,
+  written by hand from the shapes captured live on 2026-11-09 (#87), whose raw answers are not
+  in the repo. A success has `eid: -1`, the chosen slot as in the Cart's `deliveryDate` and the
+  whole Cart (trimmed here to an empty `stat` and `lines`; the fake fills in its own Cart). A
+  closed or sold-out slot is refused with HTTP 200, `eid` 406 and `msg`, and the Cart keeps its
+  slot. A Home Delivery night slot is chosen as listed, `00:00`-`06:00` on its date, and
+  answered with `delivery_message` "Tor. 12/11. Senest kl. 06:00".
 
 ## Notes on real captures
 

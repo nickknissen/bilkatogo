@@ -527,6 +527,152 @@ async def test_bilka_failures_become_a_translated_error(
     assert failed.value.translation_key == "action_failed"
 
 
+PICKUP_CAPTURED = "2026-11-08T20:00:00+01:00"
+HOME_CAPTURED = "2026-11-02T08:00:00+01:00"
+
+
+async def test_choose_pickup_slot_returns_the_chosen_and_replaced_slot_and_refreshes(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    cart.cart_contents["deliveryDate"].update(deliveryDate="2026-11-11")
+    await setup_integration()
+    polls = len(cart.calls("order_history"))
+
+    response = await call(hass, "choose_pickup_slot", {"date": "2026-11-09", "start": "16:00"})
+
+    [request] = cart.calls("set_delivery_date")
+    assert (request.url.params["intervalStart"], request.url.params["intervalEnd"]) == (
+        "16:00",
+        "18:00",
+    )
+    assert response == {
+        "chosen": {
+            "starts_at": "2026-11-09T16:00:00+01:00",
+            "ends_at": "2026-11-09T18:00:00+01:00",
+        },
+        "replaced": {
+            "starts_at": "2026-11-11T14:00:00+01:00",
+            "ends_at": "2026-11-11T16:00:00+01:00",
+        },
+        "changed": True,
+    }
+    assert len(cart.calls("order_history")) == polls + 1
+
+
+async def test_choose_pickup_slot_with_an_end_and_without_a_response(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    await setup_integration()
+
+    response = await call(
+        hass,
+        "choose_pickup_slot",
+        {"date": "2026-11-10", "start": "18:00", "end": "22:00"},
+        return_response=False,
+    )
+
+    assert response is None
+    [request] = cart.calls("set_delivery_date")
+    assert request.url.params["intervalEnd"] == "22:00"
+
+
+@pytest.mark.parametrize(
+    ("captured", "data", "key", "placeholders"),
+    [
+        (
+            PICKUP_CAPTURED,
+            {"date": "2026-11-09", "start": "08:00"},
+            "pickup_slot_sold_out",
+            {"slot": "2026-11-09 08:00-10:00"},
+        ),
+        (
+            HOME_CAPTURED,
+            {"date": "2026-11-02", "start": "00:00"},
+            "pickup_slot_closed",
+            {"slot": "2026-11-02 00:00-06:00"},
+        ),
+        (
+            PICKUP_CAPTURED,
+            {"date": "2026-11-09", "start": "09:00"},
+            "pickup_slot_not_offered",
+            {"date": "2026-11-09", "start": "09:00"},
+        ),
+        (
+            PICKUP_CAPTURED,
+            {"date": "2026-11-09", "start": "16:00", "end": "17:00"},
+            "pickup_slot_not_offered",
+            {"date": "2026-11-09", "start": "16:00"},
+        ),
+    ],
+)
+async def test_choose_pickup_slot_refuses_a_slot_that_is_not_open(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    bilka: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+    captured: str,
+    data: dict[str, str],
+    key: str,
+    placeholders: dict[str, str],
+) -> None:
+    freezer.move_to(captured)
+    fixture = "cart_home.json" if captured == HOME_CAPTURED else "cart_logged_in.json"
+    bilka.cart_contents = load_fixture(fixture)
+    await setup_integration()
+
+    with pytest.raises(ServiceValidationError) as refused:
+        await call(hass, "choose_pickup_slot", data)
+
+    assert refused.value.translation_key == key
+    assert refused.value.translation_placeholders == placeholders
+    assert bilka.calls("set_delivery_date") == []
+
+
+async def test_choose_pickup_slot_carries_bilkas_refusal(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    await setup_integration()
+    cart.script("set_delivery_date", load_fixture("set_delivery_date_unavailable.json"))
+
+    with pytest.raises(ServiceValidationError) as refused:
+        await call(hass, "choose_pickup_slot", {"date": "2026-11-09", "start": "16:00"})
+
+    assert refused.value.translation_key == "pickup_slot_unavailable"
+    assert refused.value.translation_placeholders == {
+        "slot": "2026-11-09 16:00-18:00",
+        "error": "Det valgte tidspunkt er ikke tilgængelig",
+    }
+
+
+async def test_choose_pickup_slot_when_bilka_fails(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to(PICKUP_CAPTURED)
+    await setup_integration()
+    cart.script("set_delivery_date", httpx.ConnectError("no route to host"))
+
+    with pytest.raises(HomeAssistantError) as failed:
+        await call(hass, "choose_pickup_slot", {"date": "2026-11-09", "start": "16:00"})
+
+    assert not isinstance(failed.value, ServiceValidationError)
+    assert failed.value.translation_key == "action_failed"
+
+
 @pytest.mark.parametrize("language", ["en", "da"])
 async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -> None:
     services = await async_get_translations(hass, language, "services", [DOMAIN])
@@ -542,6 +688,7 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
             ["config_entry_id", "query", "limit", "in_stock", "on_offer", "in_leaflet", "sort"],
         ),
         ("get_cart", ["config_entry_id"]),
+        ("choose_pickup_slot", ["config_entry_id", "date", "start", "end"]),
     ]:
         assert services[f"{prefix}.services.{action}.name"]
         assert services[f"{prefix}.services.{action}.description"]
@@ -559,3 +706,12 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         assert exceptions[f"{prefix}.exceptions.{key}.message"]
     assert "{error}" in exceptions[f"{prefix}.exceptions.no_items_added.message"]
     assert "{error}" in exceptions[f"{prefix}.exceptions.cart_change_rejected.message"]
+    for key, placeholders in [
+        ("pickup_slot_sold_out", ["{slot}"]),
+        ("pickup_slot_closed", ["{slot}"]),
+        ("pickup_slot_unavailable", ["{slot}", "{error}"]),
+        ("pickup_slot_not_offered", ["{date}", "{start}"]),
+        ("pickup_slot_ambiguous", ["{date}", "{start}"]),
+    ]:
+        message = exceptions[f"{prefix}.exceptions.{key}.message"]
+        assert all(placeholder in message for placeholder in placeholders)
