@@ -26,6 +26,6 @@ def session_file() -> Path:
 def load_config() -> dict[str, Any]:
     try:
         data = json.loads(config_file().read_text(encoding="utf-8"))
-    except OSError, json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
         return {}
     return data if isinstance(data, dict) else {}

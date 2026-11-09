@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -129,7 +131,7 @@ def _upcoming_slot(data: dict[str, Any] | None) -> PickupSlot | None:
 def _date(value: Any) -> date | None:
     try:
         return date.fromisoformat(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 

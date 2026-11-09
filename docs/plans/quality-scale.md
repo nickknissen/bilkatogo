@@ -113,7 +113,7 @@ Core's own guide recommends what this plan does first: ship through HACS, build 
   - The `add_to_cart` action writes to the user's account. ADR 0005 limits it to the Cart and it never checks out, which is easy to explain in the PR.
 - **Tests.** Port `tests/ha` to core's layout: `MockConfigEntry`, an `init_integration` fixture, `snapshot_platform` for entities, and patching the library client instead of `respx`. Keep 100% config-flow coverage.
 - **Side PRs:** brands (`core_integrations/bilkatogo`), home-assistant.io docs (separate PR, written from the README sections in step 5), and `CODEOWNERS` and `requirements_all.txt`, which `script.hassfest` and `script.gen_requirements_all` regenerate.
-- **Library fit.** Core needs Python `>=3.14.2`, which matches. The httpx floor `>=0.28.1` must fit core's pin in `package_constraints.txt`. The CLI extra (`typer`) stays optional and never installs in HA.
+- **Library fit.** Core needs Python `>=3.14.2`; the library's `>=3.12` fits. The httpx floor `>=0.28.1` must fit core's pin in `package_constraints.txt`. The CLI extra (`typer`) stays optional and never installs in HA.
 
 ## Sources
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import dataclass, field
@@ -234,5 +236,5 @@ def _size(data: dict[str, Any]) -> str:
 def _quantity(value: Any) -> int:
     try:
         return int(value or 0)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return 0

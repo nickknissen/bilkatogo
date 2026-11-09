@@ -159,7 +159,7 @@ class RecipeReader:
         try:
             path = category_path(category)
             pages_read: dict[str, dict[str, Any] | None] = {path: await self._page(path)}
-        except UnknownCategoryError, _NoPage:
+        except (UnknownCategoryError, _NoPage):
             raise UnknownCategoryError(category, await self.categories()) from None
         groups = await self._collect(path, CATEGORY_DEPTH, pages_read)
         mixed = [recipe for row in zip_longest(*groups) for recipe in row if recipe]
@@ -170,7 +170,7 @@ class RecipeReader:
         try:
             path = recipe_path(recipe)
             page = await self._page(path)
-        except UnknownRecipeError, _NoPage:
+        except (UnknownRecipeError, _NoPage):
             raise UnknownRecipeError(recipe, await self.categories()) from None
         sections = _sections(page)
         ingredients = [

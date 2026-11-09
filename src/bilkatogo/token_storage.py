@@ -22,7 +22,7 @@ class FileTokenStorage(TokenStorage):
     async def load(self) -> dict[str, Any] | None:
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
-        except OSError, json.JSONDecodeError:
+        except (OSError, json.JSONDecodeError):
             return None
         return data if isinstance(data, dict) else None
 

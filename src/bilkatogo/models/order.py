@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -67,7 +69,7 @@ class PickupSlot(BilkaDataClass):
                 start=time.fromisoformat(interval["start"]),
                 end=time.fromisoformat(interval["end"]),
             )
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             return None
 
     @classmethod
@@ -81,7 +83,7 @@ class PickupSlot(BilkaDataClass):
                 start=time.fromisoformat(data["intervalStart"]),
                 end=time.fromisoformat(data["intervalEnd"]),
             )
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             return None
 
 
@@ -167,7 +169,7 @@ def _ordered_at(ordered: dict[str, Any] | None) -> datetime | None:
         ordered_at = datetime.fromisoformat(
             f"{ordered['date']}T{ordered.get('time') or '00:00:00'}"
         )
-    except KeyError, TypeError, ValueError:
+    except (KeyError, TypeError, ValueError):
         return None
     return ordered_at.replace(tzinfo=BILKA_TIME_ZONE)
 

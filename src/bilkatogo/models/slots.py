@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from dataclasses import dataclass, field
 from datetime import date, time
@@ -44,7 +46,7 @@ class AvailablePickupSlot(BilkaDataClass):
                 start=time.fromisoformat(interval["intervalStart"]),
                 end=time.fromisoformat(interval["intervalEnd"]),
             )
-        except KeyError, TypeError, ValueError:
+        except (KeyError, TypeError, ValueError):
             return None
         return cls(
             _raw=interval,
@@ -160,5 +162,5 @@ def _dicts(value: Any) -> list[dict[str, Any]]:
 def _date(value: Any) -> date | None:
     try:
         return date.fromisoformat(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None

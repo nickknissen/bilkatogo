@@ -1001,7 +1001,7 @@ RecipeArgument = Annotated[
 
 
 async def read_recipes[T](
-    ctx: typer.Context, read: Callable[[RecipeReader], Awaitable[T]], what: str
+    ctx: typer.Context, read: Callable[["RecipeReader"], Awaitable[T]], what: str
 ) -> T:
     """Read public recipe pages, without logging in."""
     from .recipes import RecipeReader
