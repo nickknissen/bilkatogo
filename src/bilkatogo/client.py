@@ -1,6 +1,6 @@
 import json
 from asyncio import sleep
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from types import TracebackType
 from typing import Any, Self
@@ -33,13 +33,16 @@ from .const import (
     REQUEST_TIMEOUT_SECONDS,
     SEARCH_LIMIT,
     SESSION_VERSION,
+    UNKNOWN_PLACE_EID,
     WEB_PARAMS,
 )
 from .exceptions import (
     BilkaBusyError,
+    BilkaToGoError,
     BilkaUnreachableError,
     CartChangeRejectedError,
     InvalidCredentialsError,
+    NoHomeAddressError,
     NoPickupPointError,
     OrderNotFoundError,
     PickupSlotUnavailableError,
@@ -52,6 +55,8 @@ from .models import (
     CartChanges,
     CartChangeStatus,
     ChosenPickupSlot,
+    DeliveryChange,
+    HomeAddress,
     Order,
     OrderDetails,
     OrderHistory,
@@ -63,7 +68,7 @@ from .models import (
     SearchSort,
     SlotAvailability,
 )
-from .models.cart import cart_pickup_point, cart_store_id
+from .models.cart import cart_pickup_point, cart_store_id, is_home_delivery, is_pickup_point
 from .models.product import product_attributes, sort_products
 from .token_storage import TokenStorage
 
@@ -95,6 +100,24 @@ def _check_slot_chosen(answer: dict[str, Any], slot: PickupSlot) -> None:
         raise UnexpectedResponseError(f"SetDeliveryDate answered with {chosen}, not {slot}")
 
 
+def _saved_home_address(session: dict[str, Any]) -> HomeAddress | None:
+    """The Home Address in a saved session; None when it has none or not as this release
+    saves it."""
+    saved = session.get("home_address")
+    if not isinstance(saved, dict):
+        return None
+    place_id, zip_code = saved.get("id"), saved.get("zip_code")
+    if not (isinstance(place_id, str) and place_id and isinstance(zip_code, str) and zip_code):
+        return None
+    return HomeAddress(id=place_id, zip_code=zip_code)
+
+
+def _place_id(cart: dict[str, Any]) -> str | None:
+    """Bilka's id of the place the Cart is received at: its Pickup Point or Home Address."""
+    place_id = (cart.get("deliveryAddress") or {}).get("id")
+    return str(place_id) if place_id else None
+
+
 def _is_error_body(data: dict[str, Any]) -> bool:
     return "code" in data and "msg" in data
 
@@ -124,9 +147,10 @@ class _GigyaRefusedError(UnexpectedResponseError):
 class _ShopRefusedError(UnexpectedResponseError):
     """Bilka answered a shop call with an error body other than an expired session."""
 
-    def __init__(self, path: str, reason: str) -> None:
+    def __init__(self, path: str, reason: str, eid: Any = None) -> None:
         super().__init__(f"{path}: {reason}")
         self.reason = reason
+        self.eid = eid
 
 
 class BilkaToGoClient:
@@ -146,6 +170,8 @@ class BilkaToGoClient:
         self._jwt: str | None = None
         self._jwt_expires_at: datetime | None = None
         self._login_token: str | None = None
+        # The last Home Address seen, by id and zip code only (ADR 0009).
+        self._home_address: HomeAddress | None = None
 
     async def __aenter__(self) -> Self:
         return self
@@ -207,6 +233,9 @@ class BilkaToGoClient:
     async def _save_session(self) -> None:
         if self._token_storage is None or self._jwt_expires_at is None:
             return
+        if self._home_address is None and (saved := await self._saved_session()):
+            # A login that did not restore the session first keeps what it remembered.
+            self._home_address = _saved_home_address(saved)
         session: dict[str, Any] = {
             "version": SESSION_VERSION,
             "email": self._email,
@@ -215,7 +244,41 @@ class BilkaToGoClient:
         }
         if self._login_token is not None:
             session["login_token"] = self._login_token
+        if self._home_address is not None:
+            # An optional key, so no new SESSION_VERSION: older releases ignore it.
+            session["home_address"] = {
+                "id": self._home_address.id,
+                "zip_code": self._home_address.zip_code,
+            }
         await self._token_storage.save(session)
+
+    async def _saved_session(self) -> dict[str, Any] | None:
+        """The saved session, when it is this account's and in a format this release knows."""
+        if self._token_storage is None:
+            return None
+        session = await self._token_storage.load()
+        if not session or session.get("email") != self._email:
+            return None
+        version = session.get("version", 1)
+        if not isinstance(version, int) or version > SESSION_VERSION:
+            # Saved by a newer release in a format this one does not know.
+            return None
+        return session
+
+    async def _remember_home_address(self, places: Iterable[Any]) -> None:
+        """Remember the Home Address among `places` read from Bilka, saving it with the session
+        when it is new. Bilka lists it only while the Cart is on Home Delivery."""
+        for place in places:
+            if not isinstance(place, dict) or not is_home_delivery(place):
+                continue
+            seen = HomeAddress.from_delivery_address(place)
+            if not (seen.id and seen.zip_code):
+                continue
+            remembered = HomeAddress(id=seen.id, zip_code=seen.zip_code)
+            if remembered != self._home_address:
+                self._home_address = remembered
+                await self._save_session()
+            return
 
     async def get_orders(self, limit: int = 5, offset: int = 0) -> list[Order]:
         orders: list[Order] = []
@@ -261,9 +324,17 @@ class BilkaToGoClient:
         return next((order for order in orders if order.order_number == order_number), None)
 
     async def get_pickup_points(self) -> list[PickupPoint]:
+        """The Pickup Points the Cart can be moved to; never the Home Address, which Bilka
+        lists among them while the Cart is on Home Delivery."""
         data = await self._shop("GET", "shop/v6/AvailableDeliveryAddresses", {"orderByZipcode": 1})
+        addresses = [
+            address for address in data.get("addresses") or [] if isinstance(address, dict)
+        ]
+        await self._remember_home_address([data.get("activeAddress"), *addresses])
         return [
-            PickupPoint.from_delivery_address(address) for address in data.get("addresses") or []
+            PickupPoint.from_delivery_address(address)
+            for address in addresses
+            if is_pickup_point(address)
         ]
 
     async def get_pickup_point(self, name: str) -> PickupPoint:
@@ -277,7 +348,80 @@ class BilkaToGoClient:
         return Cart.from_dict(await self.get_cart_json())
 
     async def get_cart_json(self) -> dict[str, Any]:
-        return await self._shop("GET", "shop/v6/Cart", CART_PARAMS)
+        data = await self._shop("GET", "shop/v6/Cart", CART_PARAMS)
+        await self._remember_home_address([data.get("deliveryAddress")])
+        return data
+
+    async def get_home_address(self) -> HomeAddress | None:
+        """The Home Address Home Delivery goes to: the Cart's while it is on Home Delivery,
+        otherwise the last one the client has seen, which has only its id and zip code. None
+        until Home Delivery was chosen once on bilkatogo.dk and the client read the Cart or
+        `get_pickup_points` since."""
+        return self._home_address_of(await self.get_cart_json())
+
+    def _home_address_of(self, cart: dict[str, Any]) -> HomeAddress | None:
+        address = cart.get("deliveryAddress")
+        if isinstance(address, dict) and is_home_delivery(address):
+            return HomeAddress.from_delivery_address(address)
+        return self._home_address
+
+    async def choose_pickup_point(self, name: str) -> DeliveryChange:
+        """Move the Cart to the Pickup Point with this name (ADR 0009), and report what that
+        changed in it. Its Store then serves the Cart: Prices, Offers and stock may change, and
+        Bilka marks the Cart Lines it can't supply unavailable. Nothing is sent when the Cart is
+        there already."""
+        point = await self.get_pickup_point(name)
+        if point.id is None:
+            raise UnexpectedResponseError(f"Bilka lists {point.name} without an id")
+        return await self._move_cart(
+            point.id,
+            point.zip_code,
+            lambda reason: UnknownPickupPointError(point.name, reason),
+            await self.get_cart_json(),
+        )
+
+    async def choose_home_delivery(self) -> DeliveryChange:
+        """Move the Cart to Home Delivery at the Home Address `get_home_address` gives (ADR
+        0009), and report what that changed in it. Home Delivery has a Delivery Fee and a
+        Minimum Order. Nothing is sent when the Cart is on Home Delivery already."""
+        cart = await self.get_cart_json()
+        home = self._home_address_of(cart)
+        if home is None:
+            raise NoHomeAddressError()
+        return await self._move_cart(home.id, home.zip_code, NoHomeAddressError, cart)
+
+    async def _move_cart(
+        self,
+        place_id: str,
+        zip_code: str,
+        refused: Callable[[str], BilkaToGoError],
+        before: dict[str, Any],
+    ) -> DeliveryChange:
+        """Send SetDeliveryAddress for the place, read the Cart again and check it moved. The
+        client sends only the id and zip code, never an address of its own (ADR 0009)."""
+        if _place_id(before) == place_id:
+            cart = Cart.from_dict(before)
+            return DeliveryChange.between(cart, cart, changed=False)
+        try:
+            answer = await self._shop(
+                "GET", "shop/v6/SetDeliveryAddress", {"id": place_id, "zipcode": zip_code}
+            )
+        except _ShopRefusedError as err:
+            # A place Bilka does not know: `eid` 406, "Udleveringsstedet kunne ikke findes", and
+            # the Cart stays where it was (captured 2026-11-09). Any other refusal, e.g. the
+            # website's BLOCKED_PRODUCTS (428, never seen), is raised with Bilka's message.
+            if err.eid == UNKNOWN_PLACE_EID:
+                raise refused(err.reason) from err
+            raise
+        message = f": {answer['msg']}" if answer.get("msg") else ""
+        if answer.get("eid") != -1:
+            raise UnexpectedResponseError(f"SetDeliveryAddress answered without eid -1{message}")
+        after = await self.get_cart_json()
+        if _place_id(after) != place_id:
+            raise UnexpectedResponseError(
+                f"SetDeliveryAddress answered, but the Cart did not move to {place_id}{message}"
+            )
+        return DeliveryChange.between(Cart.from_dict(before), Cart.from_dict(after))
 
     async def set_cart_quantity(self, article_number: str, quantity: int) -> Cart:
         warnings = await self._change_line_count(article_number, quantity)
@@ -588,7 +732,7 @@ class BilkaToGoClient:
             reason = f": {data['msg']}" if data is not None else ""
             raise UnexpectedResponseError(f"{path} rejected a fresh session{reason}")
         if _is_error_body(data):
-            raise _ShopRefusedError(path, data["msg"])
+            raise _ShopRefusedError(path, data["msg"], data.get("eid"))
         return data
 
     async def _shop_request(
@@ -609,15 +753,10 @@ class BilkaToGoClient:
         return self._json(response, path)
 
     async def _restore_session(self) -> str | None:
-        if self._token_storage is None:
+        session = await self._saved_session()
+        if session is None:
             return None
-        session = await self._token_storage.load()
-        if not session or session.get("email") != self._email:
-            return None
-        version = session.get("version", 1)
-        if not isinstance(version, int) or version > SESSION_VERSION:
-            # Saved by a newer release in a format this one does not know.
-            return None
+        self._home_address = self._home_address or _saved_home_address(session)
         try:
             expires_at = datetime.fromisoformat(session["jwt_expires_at"])
             jwt = session["jwt"]

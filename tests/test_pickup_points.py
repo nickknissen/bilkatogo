@@ -107,3 +107,29 @@ async def test_unknown_pickup_point_name_raises_naming_it(bilka: FakeBilka) -> N
 
     assert isinstance(caught.value, BilkaToGoError)
     assert caught.value.name == "Bilka Atlantis"
+
+
+@pytest.mark.asyncio
+async def test_pickup_points_leave_out_the_home_address_while_the_cart_is_on_home_delivery(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    async with (
+        home_delivery_cart.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        points = await client.get_pickup_points()
+
+    assert len(points) == 22
+    assert "185595" not in {point.id for point in points}
+    assert "Kunde Eksempel" not in {point.name for point in points}
+
+
+@pytest.mark.asyncio
+async def test_pickup_points_have_bilkas_id(bilka: FakeBilka) -> None:
+    async with (
+        bilka.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        point = await client.get_pickup_point("Bilka Kolding")
+
+    assert point.id == "16230"

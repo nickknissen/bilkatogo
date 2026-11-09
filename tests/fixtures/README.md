@@ -13,6 +13,18 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
   closed or sold-out slot is refused with HTTP 200, `eid` 406 and `msg`, and the Cart keeps its
   slot. A Home Delivery night slot is chosen as listed, `00:00`-`06:00` on its date, and
   answered with `delivery_message` "Tor. 12/11. Senest kl. 06:00".
+- `set_delivery_address.json` and `set_delivery_address_unknown.json`: `GET
+  shop/v6/SetDeliveryAddress`, written by hand from the shapes captured live on 2026-11-09
+  (#89), whose raw answers are not in the repo. A success has `eid: -1`, `activeAddress` (the
+  new place, shaped like an `AvailableDeliveryAddresses` entry; the fake fills it in) and the
+  same `info` notification every time, whose exact keys were not recorded. An `id` Bilka does
+  not know is refused with HTTP 200, `eid` 406, `code` "UNKNOWN_ERROR" and `msg`, and the Cart
+  stays. The fake moves its Cart as the captures did: the Store, Delivery Fee and Packaging
+  follow the place, and Cart Lines the new Store does not sell stay, under "Ikke tilgængeligt".
+- `cart_unavailable.json`: a Cart at Bilka Kolding after moving from Bilka Vejle, trimmed and
+  written by hand from the 2026-11-09 captures: Mini Mix is kept under the group "Ikke
+  tilgængeligt" with `unavailable_reason` "Udsolgt" and still counts in the total. The group's
+  `type` was not recorded.
 
 ## Notes on real captures
 

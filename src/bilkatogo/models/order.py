@@ -92,6 +92,8 @@ class PickupPoint(BilkaDataClass):
     zip_code: str
     city: str
     store_id: str | None = None
+    id: str | None = None
+    """Bilka's id for the place, which the Cart is moved to it by; None on an Order."""
     _raw: dict[str, Any] | None = field(default=None, repr=False)
 
     @classmethod
@@ -114,6 +116,7 @@ class PickupPoint(BilkaDataClass):
             zip_code=str(data.get("zip") or ""),
             city=data.get("city") or "",
             store_id=str(store_id) if store_id else None,
+            id=str(data["id"]) if data.get("id") else None,
         )
 
 

@@ -183,6 +183,7 @@ def test_orders_json_output(invoke) -> None:
             "zip_code": "9999",
             "city": "Eksempelby",
             "store_id": None,
+            "id": None,
         },
         "home_delivery": False,
         "delivered": False,
@@ -535,9 +536,144 @@ def test_pickup_points_json(invoke) -> None:
         "zip_code": "7000",
         "city": "Fredericia",
         "store_id": "1662",
+        "id": "185582",
         "chosen": False,
     }
     assert [point["name"] for point in points if point["chosen"]] == ["Bilka Waves, Hundige"]
+
+
+def test_pickup_points_leave_out_the_home_address(invoke, home_delivery_cart: FakeBilka) -> None:
+    result = invoke("pickup-points", "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    assert len(result.output.splitlines()) == 23
+    assert "Kunde Eksempel" not in result.output
+    assert "9999" not in result.output
+
+
+def test_pickup_points_choose_prints_what_the_move_changed(
+    invoke, logged_in_cart: FakeBilka, freezer: FrozenDateTimeFactory
+) -> None:
+    freezer.move_to("2026-10-30T12:00:00+01:00")
+    logged_in_cart.unsold["1662"] = {"75191"}
+
+    result = invoke(
+        "pickup-points", "choose", "pickup fredericia", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines() == [
+        "Moved          Bilka Vejle -> Pickup Fredericia",
+        "Store          1661 -> 1662",
+        "Cart Total     127.00 kr -> 151.00 kr",
+        "Service Fee    39.00 kr -> 39.00 kr",
+        "Packaging      0.00 kr -> 5.00 kr",
+        "Delivery Fee   0.00 kr -> 19.00 kr",
+        "Warning: Mini Mix (75191) is unavailable here: Udsolgt",
+        "Warning: Your Pickup Slot Sun 01/11 14:00-16:00 is closed here; "
+        "choose another with `bilkatogo pickup-slots choose`.",
+    ]
+    [request] = logged_in_cart.calls("set_delivery_address")
+    assert request.url.params["id"] == "185582"
+
+
+def test_pickup_points_choose_names_lines_available_again(
+    invoke, logged_in_cart: FakeBilka
+) -> None:
+    logged_in_cart.unsold["1662"] = {"75191"}
+    login = invoke("login", "--email", EMAIL, "--password", PASSWORD)
+    assert login.exit_code == 0, login.output
+    invoke("pickup-points", "choose", "Bilka Kolding")
+
+    result = invoke("pickup-points", "choose", "Bilka Vejle")
+
+    assert result.exit_code == 0, result.output
+    assert "Available again: Mini Mix (75191)" in result.output.splitlines()
+
+
+def test_pickup_points_choose_the_carts_own_says_so(invoke, logged_in_cart: FakeBilka) -> None:
+    result = invoke(
+        "pickup-points", "choose", "Bilka Vejle", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines() == ["Your Cart is at Bilka Vejle already."]
+    assert logged_in_cart.calls("set_delivery_address") == []
+
+
+def test_pickup_points_choose_home_delivery_reports_the_minimum_order_without_the_address(
+    invoke, home_delivery_cart: FakeBilka
+) -> None:
+    login = invoke("login", "--email", EMAIL, "--password", PASSWORD)
+    assert login.exit_code == 0, login.output
+    invoke("pickup-points", "choose", "Bilka Vejle")
+
+    result = invoke("pickup-points", "choose", "--home-delivery")
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "Moved          Bilka Vejle -> Home Delivery"
+    assert "Delivery Fee   0.00 kr -> 39.00 kr" in lines
+    assert "Minimum Order  500.00 kr" in lines
+    assert "Kunde Eksempel" not in result.output
+    assert "9999" not in result.output
+
+
+def test_pickup_points_choose_json(invoke, logged_in_cart: FakeBilka) -> None:
+    logged_in_cart.unsold["1662"] = {"75191"}
+
+    result = invoke(
+        "pickup-points",
+        "choose",
+        "Bilka Kolding",
+        "--json",
+        "--email",
+        EMAIL,
+        "--password",
+        PASSWORD,
+    )
+
+    assert result.exit_code == 0, result.output
+    change = json.loads(result.output)
+    assert change["changed"] is True
+    assert (change["before"]["store_id"], change["after"]["store_id"]) == ("1661", "1662")
+    assert change["after"]["pickup_point"]["name"] == "Bilka Kolding"
+    assert [line["unavailable_reason"] for line in change["unavailable"]] == ["Udsolgt"]
+    assert (change["available_again"], change["gone"]) == ([], [])
+    assert change["pickup_slot_closed"] is False
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (
+            ["Bilka Atlantis"],
+            "Could not choose the pickup point: Unknown Pickup Point 'Bilka Atlantis'",
+        ),
+        (["--home-delivery"], "choose Home Delivery once on bilkatogo.dk"),
+        ([], "Name a Pickup Point or give --home-delivery."),
+        (
+            ["Bilka Kolding", "--home-delivery"],
+            "Name a Pickup Point or give --home-delivery, not both.",
+        ),
+    ],
+)
+def test_pickup_points_choose_fails_cleanly(
+    invoke, logged_in_cart: FakeBilka, args: list[str], message: str
+) -> None:
+    result = invoke("pickup-points", "choose", *args, "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 1
+    assert message in result.output
+    assert "Traceback" not in result.output
+    assert logged_in_cart.calls("set_delivery_address") == []
+
+
+def test_pickup_points_json_goes_after_the_subcommand(invoke) -> None:
+    result = invoke("pickup-points", "--json", "choose", "Bilka Kolding")
+
+    assert result.exit_code == 1
+    assert "Put --json after the subcommand: pickup-points choose --json." in result.output
 
 
 def search_rows(output: str) -> dict[str, str]:
@@ -837,6 +973,7 @@ def test_cart_json(invoke, logged_in_cart: FakeBilka) -> None:
         "quantity": 10,
         "price": "2.75",
         "line_total": "25.00",
+        "unavailable_reason": None,
     }
     assert len(cart["lines"]) == 5
     assert {key: cart[key] for key in ("total", "deposit", "service_fee", "packaging")} == {

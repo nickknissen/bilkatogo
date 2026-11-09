@@ -26,6 +26,7 @@ from .models import (
     CartChanges,
     CartChangeStatus,
     ChosenPickupSlot,
+    DeliveryChange,
     Offer,
     Order,
     OrderDetails,
@@ -358,7 +359,13 @@ def print_list(label: str, entries: list[str]) -> None:
         typer.echo(f"  {entry}")
 
 
-@app.command("pickup-points")
+pickup_points_app = typer.Typer(
+    help="Show the Pickup Points, or move your Cart to one or to Home Delivery."
+)
+app.add_typer(pickup_points_app, name="pickup-points")
+
+
+@pickup_points_app.callback(invoke_without_command=True)
 @run_async
 async def pickup_points(
     ctx: typer.Context,
@@ -366,7 +373,11 @@ async def pickup_points(
     password: PasswordOption = None,
     as_json: JsonOption = False,
 ) -> None:
-    """Show every Pickup Point with its Store, marking the one chosen in your Cart."""
+    """Show every Pickup Point with its Store, marking the one chosen in your Cart. Move your
+    Cart with `pickup-points choose`."""
+    if ctx.invoked_subcommand is not None:
+        check_no_group_options(f"pickup-points {ctx.invoked_subcommand}", as_json, [])
+        return
 
     async def fetch(client: BilkaToGoClient) -> tuple[list[PickupPoint], PickupPoint | None]:
         return await client.get_pickup_points(), await client.get_cart_pickup_point()
@@ -390,6 +401,93 @@ async def pickup_points(
             for point in points
         ],
     )
+
+
+@pickup_points_app.command("choose")
+@run_async
+async def pickup_points_choose(
+    ctx: typer.Context,
+    name: Annotated[
+        str | None,
+        typer.Argument(metavar="NAME", help='The Pickup Point, e.g. "Bilka Odense".'),
+    ] = None,
+    home_delivery: Annotated[
+        bool,
+        typer.Option(
+            "--home-delivery",
+            help="Move to Home Delivery at your Home Address. Choose it once on bilkatogo.dk "
+            "first, so that it is known.",
+        ),
+    ] = False,
+    email: EmailOption = None,
+    password: PasswordOption = None,
+    as_json: JsonOption = False,
+) -> None:
+    """Move your Cart to a Pickup Point or to Home Delivery, and show what that changed: its
+    Store, total and fees, Cart Lines Bilka can't supply there, and whether your Pickup Slot
+    is still open."""
+    if name is not None and home_delivery:
+        raise fail("Name a Pickup Point or give --home-delivery, not both.")
+    if name is None and not home_delivery:
+        raise fail("Name a Pickup Point or give --home-delivery.")
+
+    async def choose(client: BilkaToGoClient) -> DeliveryChange:
+        if name is None:
+            return await client.choose_home_delivery()
+        return await client.choose_pickup_point(name)
+
+    what = "Home Delivery" if home_delivery else "the pickup point"
+    change = await with_session(ctx, email, password, choose, what, action="Could not choose")
+    if as_json:
+        typer.echo(to_json(change))
+        return
+    print_delivery_change(change)
+
+
+CHANGED_AMOUNTS: list[tuple[str, Callable[[Cart], Decimal]]] = [
+    ("Cart Total", lambda cart: cart.total),
+    ("Service Fee", lambda cart: cart.service_fee),
+    ("Packaging", lambda cart: cart.packaging),
+    ("Delivery Fee", lambda cart: cart.delivery_fee),
+]
+
+
+def print_delivery_change(change: DeliveryChange) -> None:
+    """The move as before -> after, then warnings for what needs fixing before ordering. Never
+    the Home Address: the Cart has only "Home Delivery" for it."""
+    before, after = change.before, change.after
+    place = format_point(after.pickup_point, after.home_delivery)
+    if not change.changed:
+        typer.echo(f"Your Cart is {'on' if after.home_delivery else 'at'} {place} already.")
+        return
+    fields = [
+        ("Moved", f"{format_point(before.pickup_point, before.home_delivery)} -> {place}"),
+        ("Store", f"{before.store_id or ''} -> {after.store_id or ''}"),
+    ] + [
+        (label, f"{format_amount(amount(before))} -> {format_amount(amount(after))}")
+        for label, amount in CHANGED_AMOUNTS
+    ]
+    if after.minimum_order is not None:
+        fields.append(("Minimum Order", format_amount(after.minimum_order)))
+    for label, value in fields:
+        typer.echo(f"{label:<14} {value}")
+    for line in change.unavailable:
+        typer.echo(
+            f"Warning: {line.product} ({line.article_number}) is unavailable here: "
+            f"{line.unavailable_reason}"
+        )
+    for line in change.gone:
+        typer.echo(f"Warning: {line.product} ({line.article_number}) is no longer in your Cart.")
+    if change.available_again:
+        again = ", ".join(
+            f"{line.product} ({line.article_number})" for line in change.available_again
+        )
+        typer.echo(f"Available again: {again}")
+    if change.pickup_slot_closed:
+        typer.echo(
+            f"Warning: Your Pickup Slot {format_slot(after.pickup_slot)} is closed here; "
+            "choose another with `bilkatogo pickup-slots choose`."
+        )
 
 
 DaysOption = Annotated[

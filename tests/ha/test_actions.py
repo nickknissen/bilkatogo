@@ -673,6 +673,131 @@ async def test_choose_pickup_slot_when_bilka_fails(
     assert failed.value.translation_key == "action_failed"
 
 
+async def test_choose_pickup_point_returns_what_the_move_changed_and_refreshes(
+    hass: HomeAssistant,
+    setup_integration: SetupIntegration,
+    cart: FakeBilka,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    freezer.move_to("2026-10-30T12:00:00+01:00")
+    cart.unsold["1662"] = {"75191"}
+    await setup_integration()
+    polls = len(cart.calls("order_history"))
+
+    response = await call(hass, "choose_pickup_point", {"pickup_point": "Pickup Fredericia"})
+
+    [request] = cart.calls("set_delivery_address")
+    assert dict(request.url.params) == {"u": "w", "id": "185582", "zipcode": "7000"}
+    assert response == {
+        "changed": True,
+        "before": {
+            "pickup_point": "Bilka Vejle",
+            "home_delivery": False,
+            "store_id": "1661",
+            "total": 127.0,
+            "service_fee": 39.0,
+            "packaging": 0.0,
+            "delivery_fee": 0.0,
+        },
+        "after": {
+            "pickup_point": "Pickup Fredericia",
+            "home_delivery": False,
+            "store_id": "1662",
+            "total": 151.0,
+            "service_fee": 39.0,
+            "packaging": 5.0,
+            "delivery_fee": 19.0,
+        },
+        "minimum_order": None,
+        "unavailable": [
+            {"product": "Mini Mix", "article_number": "75191", "quantity": 1, "reason": "Udsolgt"}
+        ],
+        "available_again": [],
+        "gone": [],
+        "pickup_slot": {
+            "starts_at": "2026-11-01T14:00:00+01:00",
+            "ends_at": "2026-11-01T16:00:00+01:00",
+        },
+        "pickup_slot_closed": True,
+    }
+    assert len(cart.calls("order_history")) == polls + 1
+
+
+async def test_choose_home_delivery_returns_the_change_without_the_home_address(
+    hass: HomeAssistant, setup_integration: SetupIntegration, home_delivery_cart: FakeBilka
+) -> None:
+    await setup_integration()
+    await call(hass, "get_cart", {})  # remembers the Home Address
+    home_delivery_cart.cart_contents = load_fixture("cart_logged_in.json")
+    polls = len(home_delivery_cart.calls("order_history"))
+
+    response = await call(hass, "choose_home_delivery", {})
+
+    [request] = home_delivery_cart.calls("set_delivery_address")
+    assert dict(request.url.params) == {"u": "w", "id": "185595", "zipcode": "9999"}
+    assert response["changed"] is True
+    assert response["after"]["home_delivery"] is True
+    assert response["after"]["pickup_point"] is None
+    assert response["after"]["delivery_fee"] == 39.0
+    assert response["minimum_order"] == 500.0
+    assert "Kunde Eksempel" not in str(response)
+    assert "9999" not in str(response)
+    assert len(home_delivery_cart.calls("order_history")) == polls + 1
+    for state in hass.states.async_all():
+        assert "Kunde Eksempel" not in str(state.as_dict())
+
+
+async def test_choose_pickup_point_without_a_response(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    response = await call(
+        hass, "choose_pickup_point", {"pickup_point": "Bilka Kolding"}, return_response=False
+    )
+
+    assert response is None
+    assert cart.cart_contents["deliveryAddress"]["name"] == "Bilka Kolding"
+
+
+async def test_choose_pickup_point_refuses_an_unknown_name(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    with pytest.raises(ServiceValidationError) as refused:
+        await call(hass, "choose_pickup_point", {"pickup_point": "Bilka Atlantis"})
+
+    assert refused.value.translation_key == "unknown_pickup_point"
+    assert refused.value.translation_placeholders == {"pickup_point": "Bilka Atlantis"}
+    assert cart.calls("set_delivery_address") == []
+
+
+async def test_choose_home_delivery_without_a_known_home_address(
+    hass: HomeAssistant, setup_integration: SetupIntegration, cart: FakeBilka
+) -> None:
+    await setup_integration()
+
+    with pytest.raises(ServiceValidationError) as refused:
+        await call(hass, "choose_home_delivery", {})
+
+    assert refused.value.translation_key == "no_home_address"
+    assert cart.calls("set_delivery_address") == []
+
+
+async def test_the_home_address_is_remembered_in_the_entrys_store(
+    hass: HomeAssistant,
+    hass_storage: dict[str, Any],
+    setup_integration: SetupIntegration,
+    home_delivery_cart: FakeBilka,
+) -> None:
+    entry = await setup_integration()
+    await call(hass, "get_cart", {})
+
+    session = hass_storage[f"{DOMAIN}.{entry.entry_id}.session"]["data"]
+    assert session["home_address"] == {"id": "185595", "zip_code": "9999"}
+
+
 @pytest.mark.parametrize("language", ["en", "da"])
 async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -> None:
     services = await async_get_translations(hass, language, "services", [DOMAIN])
@@ -689,6 +814,8 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         ),
         ("get_cart", ["config_entry_id"]),
         ("choose_pickup_slot", ["config_entry_id", "date", "start", "end"]),
+        ("choose_pickup_point", ["config_entry_id", "pickup_point"]),
+        ("choose_home_delivery", ["config_entry_id"]),
     ]:
         assert services[f"{prefix}.services.{action}.name"]
         assert services[f"{prefix}.services.{action}.description"]
@@ -701,6 +828,7 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         "no_entry_loaded",
         "entry_required",
         "no_pickup_point",
+        "no_home_address",
         "action_failed",
     ]:
         assert exceptions[f"{prefix}.exceptions.{key}.message"]
@@ -712,6 +840,7 @@ async def test_action_texts_are_translated(hass: HomeAssistant, language: str) -
         ("pickup_slot_unavailable", ["{slot}", "{error}"]),
         ("pickup_slot_not_offered", ["{date}", "{start}"]),
         ("pickup_slot_ambiguous", ["{date}", "{start}"]),
+        ("unknown_pickup_point", ["{pickup_point}"]),
     ]:
         message = exceptions[f"{prefix}.exceptions.{key}.message"]
         assert all(placeholder in message for placeholder in placeholders)

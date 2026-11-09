@@ -111,3 +111,22 @@ choose_pickup_slot:
       example: "18:00"
       selector:
         time:
+
+choose_pickup_point:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: bilkatogo
+    pickup_point:
+      required: true
+      example: "Bilka Odense"
+      selector:
+        text:
+
+choose_home_delivery:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: bilkatogo

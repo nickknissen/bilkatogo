@@ -21,14 +21,18 @@ from bilkatogo import (
     Cart,
     CartChangeRejectedError,
     CartChangeStatus,
+    CartLine,
     ChosenPickupSlot,
+    DeliveryChange,
     InvalidCredentialsError,
+    NoHomeAddressError,
     NoPickupPointError,
     PickupSlot,
     PickupSlotUnavailableError,
     Product,
     SearchSort,
     SlotAvailability,
+    UnknownPickupPointError,
 )
 from bilkatogo.const import CHOOSABLE_SLOT_DAYS
 
@@ -41,6 +45,8 @@ SERVICE_REMOVE_FROM_CART = "remove_from_cart"
 SERVICE_SEARCH = "search"
 SERVICE_GET_CART = "get_cart"
 SERVICE_CHOOSE_PICKUP_SLOT = "choose_pickup_slot"
+SERVICE_CHOOSE_PICKUP_POINT = "choose_pickup_point"
+SERVICE_CHOOSE_HOME_DELIVERY = "choose_home_delivery"
 
 ATTR_ARTICLE_NUMBER = "article_number"
 ATTR_QUANTITY = "quantity"
@@ -54,6 +60,7 @@ ATTR_SORT = "sort"
 ATTR_DATE = "date"
 ATTR_START = "start"
 ATTR_END = "end"
+ATTR_PICKUP_POINT = "pickup_point"
 
 DEFAULT_SEARCH_LIMIT = 10
 
@@ -120,6 +127,15 @@ CHOOSE_PICKUP_SLOT_SCHEMA = probatio.Schema(
     }
 )
 
+CHOOSE_PICKUP_POINT_SCHEMA = probatio.Schema(
+    {
+        probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        probatio.Required(ATTR_PICKUP_POINT): cv.string,
+    }
+)
+
+CHOOSE_HOME_DELIVERY_SCHEMA = probatio.Schema({probatio.Optional(ATTR_CONFIG_ENTRY_ID): cv.string})
+
 UNAVAILABLE_SLOT_KEYS = {
     SlotAvailability.SOLD_OUT: "pickup_slot_sold_out",
     SlotAvailability.CLOSED: "pickup_slot_closed",
@@ -173,6 +189,16 @@ async def _run[T](call: ServiceCall, action: Callable[[BilkaToGoClient], Awaitab
     except NoPickupPointError as err:
         raise HomeAssistantError(
             translation_domain=DOMAIN, translation_key="no_pickup_point"
+        ) from err
+    except UnknownPickupPointError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_pickup_point",
+            translation_placeholders={"pickup_point": err.name},
+        ) from err
+    except NoHomeAddressError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="no_home_address"
         ) from err
     except BilkaToGoError as err:
         raise HomeAssistantError(
@@ -372,6 +398,67 @@ async def _choose_pickup_slot(call: ServiceCall) -> ServiceResponse:
     }
 
 
+def _place_response(cart: Cart) -> dict[str, Any]:
+    """Where the Cart is received, by its Pickup Point's name or as Home Delivery: never the
+    Home Address."""
+    return {
+        "pickup_point": cart.pickup_point.name if cart.pickup_point else None,
+        "home_delivery": cart.home_delivery,
+        "store_id": cart.store_id,
+        "total": float(cart.total),
+        "service_fee": float(cart.service_fee),
+        "packaging": float(cart.packaging),
+        "delivery_fee": float(cart.delivery_fee),
+    }
+
+
+def _line_response(line: CartLine) -> dict[str, Any]:
+    return {
+        "product": line.product,
+        "article_number": line.article_number,
+        "quantity": line.quantity,
+    }
+
+
+def _delivery_change_response(change: DeliveryChange) -> dict[str, Any]:
+    after = change.after
+    return {
+        "changed": change.changed,
+        "before": _place_response(change.before),
+        "after": _place_response(after),
+        "minimum_order": float(after.minimum_order) if after.minimum_order is not None else None,
+        "unavailable": [
+            {**_line_response(line), "reason": line.unavailable_reason}
+            for line in change.unavailable
+        ],
+        "available_again": [_line_response(line) for line in change.available_again],
+        "gone": [_line_response(line) for line in change.gone],
+        "pickup_slot": _slot_response(after.pickup_slot),
+        "pickup_slot_closed": change.pickup_slot_closed,
+    }
+
+
+async def _move_cart(
+    call: ServiceCall, move: Callable[[BilkaToGoClient], Awaitable[DeliveryChange]]
+) -> ServiceResponse:
+    change = await _run(call, move)
+    # The Store, the Pickup Point and the Pickup Slots follow the Cart.
+    await _entry(call).runtime_data.async_request_refresh()
+    return _delivery_change_response(change) if call.return_response else None
+
+
+async def _choose_pickup_point(call: ServiceCall) -> ServiceResponse:
+    """Moves the Cart to a Pickup Point by name, then refreshes the entities."""
+    name: str = call.data[ATTR_PICKUP_POINT]
+    return await _move_cart(call, lambda client: client.choose_pickup_point(name))
+
+
+async def _choose_home_delivery(call: ServiceCall) -> ServiceResponse:
+    """Moves the Cart to Home Delivery at the remembered Home Address, then refreshes the
+    entities."""
+    return await _move_cart(call, lambda client: client.choose_home_delivery())
+
+
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
@@ -414,5 +501,19 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_CHOOSE_PICKUP_SLOT,
         _choose_pickup_slot,
         schema=CHOOSE_PICKUP_SLOT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CHOOSE_PICKUP_POINT,
+        _choose_pickup_point,
+        schema=CHOOSE_PICKUP_POINT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CHOOSE_HOME_DELIVERY,
+        _choose_home_delivery,
+        schema=CHOOSE_HOME_DELIVERY_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )

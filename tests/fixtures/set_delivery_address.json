@@ -1,0 +1,15 @@
+{
+  "activeAddress": null,
+  "activeDeliveryPointComment": null,
+  "notifications": [
+    {
+      "type": "info",
+      "message": "Log ind for at se aktuelle varer og priser i dit Bilka varehus",
+      "showOnlyOneTime": true
+    }
+  ],
+  "eid": -1,
+  "uid": 900001,
+  "tid": "00000000-0000-0000-0000-000000000000",
+  "info_object": null
+}

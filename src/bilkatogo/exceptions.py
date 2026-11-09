@@ -28,11 +28,27 @@ class BilkaBusyError(BilkaToGoError):
 
 
 class UnknownPickupPointError(BilkaToGoError):
-    """No Pickup Point has the given name."""
+    """No Pickup Point has the given name, or Bilka refused to move the Cart to it because it
+    does not know it; `reason` is then Bilka's message. The Cart did not move."""
 
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Unknown Pickup Point {name!r}")
+    def __init__(self, name: str, reason: str | None = None) -> None:
+        super().__init__(f"Unknown Pickup Point {name!r}" + (f": {reason}" if reason else ""))
         self.name = name
+        self.reason = reason
+
+
+class NoHomeAddressError(BilkaToGoError):
+    """Home Delivery can't be chosen: the client has not seen the account's Home Address yet,
+    or Bilka no longer knows the one it remembers. Choose Home Delivery once on bilkatogo.dk,
+    then the client remembers it. The Cart did not move."""
+
+    def __init__(self, reason: str | None = None) -> None:
+        cause = f" ({reason})" if reason else ""
+        super().__init__(
+            f"No Home Address is known for Home Delivery{cause}; choose Home Delivery once on "
+            "bilkatogo.dk, then try again"
+        )
+        self.reason = reason
 
 
 class NoPickupPointError(BilkaToGoError):
