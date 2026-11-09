@@ -118,9 +118,9 @@ Library and CLI:
 uv run ruff format --check . && uv run ruff check . && uv run ty check && uv run pytest
 ```
 
-Home Assistant tests use their own dependency group, because
-`pytest-homeassistant-custom-component` pins its own pytest and httpx. Keep them in a
-separate virtual environment so the library environment stays untouched:
+Home Assistant tests use their own dependency group, because `pytest-homeassistant` pins
+Home Assistant and its own pytest. Keep them in a separate virtual environment so the
+library environment stays untouched:
 
 ```sh
 UV_PROJECT_ENVIRONMENT=.venv-ha uv run --no-default-groups --group ha pytest tests/ha

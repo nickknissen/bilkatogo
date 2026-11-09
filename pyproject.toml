@@ -59,7 +59,9 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = ["live: reads the real bilkatogo.dk; run with -m live"]
-addopts = "-m 'not live'"
+# Home Assistant replaces httpx with httpx2 when imported; respx's plugin would import
+# httpx first. Tests use respx.mock directly.
+addopts = "-m 'not live' -p no:respx"
 
 [tool.ty.environment]
 python-version = "3.12"
@@ -77,6 +79,9 @@ include = ["tests/"]
 [tool.ty.overrides.rules]
 invalid-assignment = "ignore"
 
+[tool.mypy]
+mypy_path = "stubs"
+
 [dependency-groups]
 dev = [
     "bilkatogo[cli]",
@@ -88,9 +93,9 @@ dev = [
 ]
 ha = [
     "mypy>=2.4.0",
-    # Home Assistant 2026.10.4. CI's ha-versions job also tests the oldest one hacs.json
-    # allows and the next beta.
-    "pytest-homeassistant-custom-component==0.13.375",
+    # Pins Home Assistant 2026.11.1. CI's ha-test-oldest job also tests the oldest one
+    # hacs.json allows.
+    "pytest-homeassistant==2026.11.1",
     "respx>=0.22.0",
     "ty>=0.0.92",
 ]
