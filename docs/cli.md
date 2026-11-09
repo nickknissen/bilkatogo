@@ -38,7 +38,7 @@ bilkatogo cart remove 18381 --quantity 2   # take 2 off the Cart Line
 bilkatogo cart remove 18381     # take it out of the Cart
 bilkatogo recipes               # this week's Madplan: day, Recipe and its path
 bilkatogo recipes list aftensmad --limit 10        # the Recipes in a category
-bilkatogo recipes show aftensmad/danske-retter/karbonader   # ingredients, method, Products with Price and stock
+bilkatogo recipes show aftensmad/danske-retter/karbonader   # description, ingredients, method, Products with Price and stock
 bilkatogo recipes add aftensmad/danske-retter/karbonader    # asks, then adds one of each Product
 ```
 

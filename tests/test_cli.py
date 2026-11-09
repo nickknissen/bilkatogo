@@ -1601,6 +1601,8 @@ def test_recipes_show_prints_the_recipe_and_its_products_at_the_store(
         "Persons  4",
         "Time     20 min",
     ]
+    assert lines[4].startswith("Denne carbonara er nem, hurtig og fuld af smag")
+    assert lines[5] == "Ingredients"
     assert "Ingredients" in lines
     assert "Fremgangsmåde" in lines
     products = lines[lines.index("") + 1 :]

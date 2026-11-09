@@ -1129,6 +1129,8 @@ def print_recipe(details: RecipeDetails) -> None:
     ]
     for label, value in fields:
         typer.echo(f"{label:<8} {value}")
+    if details.description:
+        typer.echo(details.description)
     print_list("Ingredients", details.ingredients)
     for section in details.method:
         print_list(section.title or "Method", section.steps)

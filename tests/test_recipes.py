@@ -260,6 +260,13 @@ async def test_a_recipe_has_its_facts_ingredients_method_and_article_numbers(
         KARBONADER,
     )
     assert (recipe.persons, recipe.time) == (4, "35 min")
+    # The paragraph under the title, above "Ingredienser".
+    assert recipe.description == (
+        "Lav nemt klassiske karbonader med sprød panering, saftigt hakket kød og en lækker, "
+        "cremet sauce med ærter og grønne asparges. Servér med kartofler og persille for en "
+        "skøn mormorret. Ingredienserne kan du nemt bestille hos BilkaToGo, så middagen snart "
+        "kan være klar!"
+    )
     assert recipe.image is not None
     assert recipe.image.startswith("https://digitalassets.sallinggroup.com/image/upload/")
     # The first banner's image.
