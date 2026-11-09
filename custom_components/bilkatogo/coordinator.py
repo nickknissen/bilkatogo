@@ -39,6 +39,17 @@ def polling_interval(order: Order | None, now: datetime) -> timedelta:
     return min(UPDATE_INTERVAL, until_fast)
 
 
+def backoff_interval(interval: timedelta, failures: int) -> timedelta:
+    """The wait before the next poll after `failures` failed updates in a row: `interval`
+    doubled per failure, never more than the normal interval."""
+    # Doubles one failure at a time: 2**failures would overflow a timedelta in a long outage.
+    for _ in range(failures):
+        interval *= 2
+        if interval >= UPDATE_INTERVAL:
+            return UPDATE_INTERVAL
+    return interval
+
+
 @dataclass
 class BilkaToGoData:
     order: Order | None
@@ -65,6 +76,8 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
         )
         self.client = client
         self.announcers = announcers(hass, entry.entry_id)
+        # Failed updates in a row, which back off polling (backoff_interval).
+        self.failures = 0
 
     async def _async_setup(self) -> None:
         for announcer in self.announcers:
@@ -82,11 +95,17 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
                 translation_placeholders={"error": str(err)},
             ) from err
         except BilkaToGoError as err:
+            self.failures += 1
+            # update_interval stays what the last success set; retry_after only delays the
+            # next refresh.
+            retry_after = backoff_interval(self.update_interval or UPDATE_INTERVAL, self.failures)
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="update_failed",
                 translation_placeholders={"error": str(err)},
+                retry_after=retry_after.total_seconds(),
             ) from err
+        self.failures = 0
         pickup_slots = await self._async_fetch_pickup_slots()
         self.update_interval = polling_interval(order, dt_util.utcnow())
         announced = {}
