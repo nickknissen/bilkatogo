@@ -7,6 +7,7 @@
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/nickknissen/bilkatogo/issues",
+  "loggers": ["bilkatogo"],
   "requirements": ["bilkatogo==0.13.0"],
   "version": "0.13.0"
 }
