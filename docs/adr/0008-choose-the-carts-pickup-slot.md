@@ -1,5 +1,7 @@
 # Choose the Cart's Pickup Slot
 
+> Partly superseded by ADR 0009 (2026-11-09): the client may also choose the Cart's Pickup Point or Home Delivery.
+
 The client may now choose the Pickup Slot in the customer's Cart (`GET shop/v3/SetDeliveryDate` with `deliveryDate`, `intervalStart` and `intervalEnd`). This supersedes the line in ADR 0005 and ADR 0006 that it never chooses a slot. Those ADRs grouped choosing a slot with placing an Order. But the chosen slot is part of the Cart: setting it reserves nothing ("kan blive fuldt booket forinden", in Bilka's own text), spends nothing and commits Bilka to nothing until the customer places the Order on the website. It is the step after "fill my Cart" that users want automated ("put my Cart on Thursday 16–18").
 
 The rest of ADR 0005 stands. The client never chooses or changes the Pickup Point or Home Delivery address (`SetDeliveryAddress`, `SetPickupZone`), and never places, pays for or cancels an Order.

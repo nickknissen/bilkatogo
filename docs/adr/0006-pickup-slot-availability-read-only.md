@@ -1,6 +1,6 @@
 # Pickup Slot availability, read-only
 
-> Partly superseded by ADR 0008 (2026-11-09): the client may choose the Cart's Pickup Slot, though never `SetDeliveryAddress` or `SetPickupZone`. How availability is read stands.
+> Partly superseded by ADR 0008 and ADR 0009 (2026-11-09): the client may choose the Cart's Pickup Slot (`SetDeliveryDate`) and its Pickup Point or Home Delivery (`SetDeliveryAddress`). How availability is read stands.
 
 From #73 the client reads which Pickup Slots Bilka offers in the coming days (`GET shop/v3/AvailableDeliveryDates`, with the JWT and no parameter besides `u=w`), as the website does before the customer picks one. Bilka answers for whatever the Cart has, its Pickup Point or Home Delivery address; the call names neither, so the client also reads the Cart to say which. The chosen slot comes from the Cart too: the answer repeats it at its top level, but one capture there has `intervalStart` and `intervalEnd` with `deliveryDate: null`, and the Cart's `deliveryDate` is the glossary's source. ADR 0005's line stands: the client never chooses a slot, a Pickup Point or an address, and never sends `SetDeliveryDate`, `SetDeliveryAddress` or `SetPickupZone`. Showing availability spends nothing and commits Bilka to nothing; choosing a slot is part of placing an Order.
 

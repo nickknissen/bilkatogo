@@ -1,6 +1,6 @@
 # Cart writes, never checkout
 
-> Partly superseded by ADR 0008 (2026-11-09): the client may choose the Cart's Pickup Slot. Everything else below stands.
+> Partly superseded by ADR 0008 and ADR 0009 (2026-11-09): the client may choose the Cart's Pickup Slot, and its Pickup Point or Home Delivery. It still never places, pays for or cancels an Order.
 
 From v3 the client changes the customer's Cart: it sets the quantity of a Product by Article Number (`shop/v6/ChangeLineCount`, 0 removes the Cart Line) and empties the Cart (`shop/v6/EmptyCart`). These are the first writes against Bilka's private API. We stop at the Cart: the client never chooses a Pickup Slot or Pickup Point, places, pays for or cancels an Order. A Cart change is reversible and costs nothing; a placed Order spends the customer's money and commits Bilka to packing it, so a bug or a misread response there has real consequences that a test against a fake backend cannot rule out.
 
