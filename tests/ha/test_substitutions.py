@@ -1,3 +1,5 @@
+"""Tests for announcing Substitutions."""
+
 from datetime import timedelta
 from typing import Any
 
@@ -48,6 +50,7 @@ SUBSTITUTIONS = [
 
 
 def substitutions(hass: HomeAssistant, entry: MockConfigEntry) -> State:
+    """Return the state of the Substitutions sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "sensor", DOMAIN, f"{entry.unique_id}_substitutions"
     )
@@ -58,6 +61,7 @@ def substitutions(hass: HomeAssistant, entry: MockConfigEntry) -> State:
 
 
 def set_status(bilka: FakeBilka, status_code: str) -> None:
+    """Make the Order the only one in the Order History, with the given Bilka Status Code."""
     order = next(o for o in bilka.orders if o["orderId"] == ORDER_NUMBER)
     bilka.orders = [{**order, "status": status_code}]
     details = bilka.details[ORDER_NUMBER]
@@ -65,6 +69,7 @@ def set_status(bilka: FakeBilka, status_code: str) -> None:
 
 
 async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """Move time on an hour and let the next update run."""
     freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -73,6 +78,7 @@ async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> No
 async def test_substitutions_are_shown_once_the_order_is_packed(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test the Substitutions sensor counts and lists the Substitutions of a Packed Order."""
     set_status(bilka, "Pakket")
 
     entry = await setup_integration()
@@ -88,6 +94,7 @@ async def test_details_are_fetched_only_while_packed_and_kept_after_pickup(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test Order Details are fetched once, when Packed, and kept after the Order is Picked Up."""
     set_status(bilka, "Ubehandlet")
     entry = await setup_integration()
     set_status(bilka, "Bestilt")
@@ -113,6 +120,7 @@ async def test_details_are_fetched_only_while_packed_and_kept_after_pickup(
 async def test_details_are_fetched_for_orders_that_ended_without_pickup(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka, status_code: str
 ) -> None:
+    """Test the Substitutions are shown for an Order that finished without being Picked Up."""
     set_status(bilka, status_code)
 
     entry = await setup_integration()
@@ -126,6 +134,7 @@ async def test_a_picked_up_order_fetches_its_details_once_after_a_restart(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a Picked Up Order fetches its Order Details once at setup and not again."""
     set_status(bilka, "Faktureret")
 
     entry = await setup_integration()
@@ -152,6 +161,7 @@ async def test_each_substitution_is_announced_once_from_received_to_picked_up(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test each Substitution is announced once, and not again on reload or when Picked Up."""
     state_changes = async_capture_events(hass, EVENT_STATE_CHANGED)
     set_status(bilka, "Bestilt")
     entry = await setup_integration()
@@ -187,6 +197,7 @@ async def test_the_substitution_entity_fires_once_for_each_substitution(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test each Substitution fires the event entity once over repeated updates."""
     state_changes = async_capture_events(hass, EVENT_STATE_CHANGED)
     set_status(bilka, "Bestilt")
     entry = await setup_integration()
@@ -207,6 +218,7 @@ async def test_the_substitution_entity_does_not_fire_again_after_a_failed_update
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test failed updates leave the Substitution event entity as it was."""
     set_status(bilka, "Pakket")
     entry = await setup_integration()
     entity_id = event_entity_id(hass, entry, "substitution")
@@ -229,6 +241,7 @@ async def test_announced_substitutions_survive_a_restart(
     hass_storage: dict[str, Any],
     config_entry: MockConfigEntry,
 ) -> None:
+    """Test Substitutions announced before a restart are not announced again."""
     hass_storage[f"bilkatogo.{config_entry.entry_id}.substitutions"] = {
         "version": 1,
         "key": f"bilkatogo.{config_entry.entry_id}.substitutions",
@@ -287,6 +300,7 @@ async def test_a_substitution_added_later_is_announced(
     freezer: FrozenDateTimeFactory,
     hass_storage: dict[str, Any],
 ) -> None:
+    """Test a Substitution added later is announced by its Article Number, not its name."""
     set_status(bilka, "Pakket")
     entry = await setup_integration()
     state_changes = async_capture_events(hass, EVENT_STATE_CHANGED)
@@ -319,6 +333,7 @@ async def test_a_new_current_order_drops_the_previous_substitutions(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a new Current Order clears the previous Order's Substitutions."""
     set_status(bilka, "Pakket")
     entry = await setup_integration()
 
@@ -336,6 +351,7 @@ async def test_removing_the_entry_forgets_announced_substitutions(
     bilka: FakeBilka,
     hass_storage: dict[str, Any],
 ) -> None:
+    """Test removing the config entry deletes the stored announced Substitutions."""
     set_status(bilka, "Pakket")
     entry = await setup_integration()
     assert f"bilkatogo.{entry.entry_id}.substitutions" in hass_storage

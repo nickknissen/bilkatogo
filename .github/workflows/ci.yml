@@ -60,7 +60,9 @@ jobs:
       - run: uv venv
       # Home Assistant 2026.10.0
       - run: uv pip install -e . pytest-homeassistant-custom-component==0.13.371
-      - run: .venv/bin/pytest tests/ha
+      # Its snapshot_platform writes device_id and config_subentry_id as <ANY>, so the
+      # entity snapshots, recorded with 2026.11, only run in ha-test.
+      - run: .venv/bin/pytest tests/ha -k "not test_all_entities"
 
   hassfest:
     runs-on: ubuntu-latest

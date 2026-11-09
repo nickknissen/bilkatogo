@@ -1,3 +1,5 @@
+"""Tests for the Ready for pickup binary sensor."""
+
 from datetime import timedelta
 
 import httpx
@@ -15,6 +17,7 @@ from tests.ha.conftest import SetupIntegration
 
 
 def ready_for_pickup(hass: HomeAssistant, entry: MockConfigEntry) -> State:
+    """Return the state of the Ready for pickup binary sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "binary_sensor", DOMAIN, f"{entry.unique_id}_ready_for_pickup"
     )
@@ -25,6 +28,7 @@ def ready_for_pickup(hass: HomeAssistant, entry: MockConfigEntry) -> State:
 
 
 def only_order(bilka: FakeBilka, status_code: str, *, home_delivery: bool = False) -> None:
+    """Make the first Order the only one in the Order History, with the Bilka Status Code."""
     order = bilka.orders[0]
     bilka.orders = [
         {
@@ -39,6 +43,7 @@ def only_order(bilka: FakeBilka, status_code: str, *, home_delivery: bool = Fals
 async def test_on_while_the_current_order_is_packed(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka, home_delivery: bool
 ) -> None:
+    """Test the sensor is on, without a device class, while the Current Order is Packed."""
     only_order(bilka, "Pakket", home_delivery=home_delivery)
 
     entry = await setup_integration()
@@ -55,6 +60,7 @@ async def test_on_while_the_current_order_is_packed(
 async def test_off_for_every_other_order_status(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka, status: str
 ) -> None:
+    """Test the sensor is off when the Current Order has any Order Status but Packed."""
     only_order(bilka, status)
 
     entry = await setup_integration()
@@ -65,6 +71,7 @@ async def test_off_for_every_other_order_status(
 async def test_off_without_a_current_order(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test the sensor is off when there is no Current Order."""
     bilka.orders = []
 
     entry = await setup_integration()
@@ -78,6 +85,7 @@ async def test_unavailable_when_the_update_fails(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test the sensor becomes unavailable when an update fails."""
     entry = await setup_integration()
     bilka.script("order_history", httpx.ConnectError("down"))
 
@@ -91,6 +99,7 @@ async def test_unavailable_when_the_update_fails(
 async def test_name_is_translated_in_danish_and_english(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test the sensor's name has Danish and English translations."""
     await setup_integration()
     key = f"component.{DOMAIN}.entity.binary_sensor.ready_for_pickup.name"
 

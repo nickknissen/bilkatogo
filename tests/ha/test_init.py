@@ -1,3 +1,5 @@
+"""Tests for setting up and removing BilkaToGo."""
+
 from typing import Any
 
 import httpx
@@ -14,6 +16,7 @@ from tests.ha.conftest import SetupIntegration
 
 
 def account_entry(*, minor_version: int = 2) -> MockConfigEntry:
+    """Return a config entry for the test account."""
     return MockConfigEntry(
         domain=DOMAIN,
         title=EMAIL,
@@ -24,12 +27,14 @@ def account_entry(*, minor_version: int = 2) -> MockConfigEntry:
 
 
 def stored_session(hass_storage: dict[str, Any], entry_id: str) -> dict[str, Any]:
+    """Return the session stored for the config entry."""
     return hass_storage[f"bilkatogo.{entry_id}.session"]["data"]
 
 
 async def test_session_is_kept_in_home_assistant_storage(
     hass: HomeAssistant, setup_integration: SetupIntegration, hass_storage: dict[str, Any]
 ) -> None:
+    """Test the login session is saved in Home Assistant's storage."""
     entry = await setup_integration()
 
     session = stored_session(hass_storage, entry.entry_id)
@@ -40,6 +45,7 @@ async def test_session_is_kept_in_home_assistant_storage(
 async def test_reload_reuses_the_stored_session(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test reloading the entry uses the stored session instead of logging in again."""
     entry = await setup_integration()
 
     assert await hass.config_entries.async_reload(entry.entry_id)
@@ -53,6 +59,7 @@ async def test_reload_reuses_the_stored_session(
 async def test_setup_retries_when_bilka_is_unreachable(
     hass: HomeAssistant, setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test setup is retried later when Bilka cannot be reached."""
     bilka.script("gigya_login", httpx.ConnectError("down"))
 
     entry = await setup_integration()
@@ -63,6 +70,7 @@ async def test_setup_retries_when_bilka_is_unreachable(
 async def test_device_links_to_the_bilkatogo_website(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test the account's service device links to bilkatogo.dk."""
     entry = await setup_integration()
 
     [device] = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
@@ -75,6 +83,7 @@ async def test_device_links_to_the_bilkatogo_website(
 async def test_entities_are_keyed_on_the_account(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test every entity's unique ID starts with the account's email."""
     entry = await setup_integration()
 
     entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
@@ -101,6 +110,7 @@ async def test_entities_are_keyed_on_the_account(
 async def test_re_adding_the_account_keeps_entity_settings(
     hass: HomeAssistant, setup_integration: SetupIntegration
 ) -> None:
+    """Test removing and adding the account again keeps a renamed entity's settings."""
     entry = await setup_integration()
     registry = er.async_get(hass)
     entity_id = registry.async_get_entity_id("sensor", DOMAIN, f"{EMAIL}_order_status")
@@ -123,6 +133,7 @@ async def test_re_adding_the_account_keeps_entity_settings(
 async def test_entities_and_device_move_from_the_entry_to_the_account(
     hass: HomeAssistant,
 ) -> None:
+    """Test migration rekeys entities and the device from the entry ID to the account."""
     entry = account_entry(minor_version=1)
     entry.add_to_hass(hass)
     device = dr.async_get(hass).async_get_or_create(
@@ -154,6 +165,7 @@ async def test_entities_and_device_move_from_the_entry_to_the_account(
 async def test_unload_and_remove_entry(
     hass: HomeAssistant, setup_integration: SetupIntegration, hass_storage: dict[str, Any]
 ) -> None:
+    """Test the entry unloads, and removing it deletes the stored session."""
     entry = await setup_integration()
 
     assert await hass.config_entries.async_unload(entry.entry_id)

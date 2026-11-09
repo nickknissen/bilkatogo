@@ -1,0 +1,51 @@
+# serializer version: 1
+# name: test_all_entities[binary_sensor.kunde_example_com_ready_for_pickup-entry]
+  EntityRegistryEntrySnapshot({
+    'aliases': list([
+      None,
+    ]),
+    'area_id': None,
+    'capabilities': None,
+    'config_entry_id': <ANY>,
+    'config_subentry_id': None,
+    'device_class': None,
+    'device_id': <DeviceEntry identifiers=[('bilkatogo', 'kunde@example.com')]>,
+    'disabled_by': None,
+    'domain': 'binary_sensor',
+    'entity_category': None,
+    'entity_id': 'binary_sensor.kunde_example_com_ready_for_pickup',
+    'has_entity_name': True,
+    'hidden_by': None,
+    'icon': None,
+    'id': <ANY>,
+    'labels': set({
+    }),
+    'name': None,
+    'object_id_base': 'Ready for pickup',
+    'options': dict({
+    }),
+    'original_device_class': None,
+    'original_icon': None,
+    'original_name': 'Ready for pickup',
+    'platform': 'bilkatogo',
+    'previous_unique_id': None,
+    'suggested_object_id': None,
+    'supported_features': 0,
+    'translation_key': 'ready_for_pickup',
+    'unique_id': 'kunde@example.com_ready_for_pickup',
+    'unit_of_measurement': None,
+  })
+# ---
+# name: test_all_entities[binary_sensor.kunde_example_com_ready_for_pickup-state]
+  StateSnapshot({
+    'attributes': ReadOnlyDict({
+      <EntityStateAttribute.FRIENDLY_NAME: 'friendly_name'>: 'kunde@example.com Ready for pickup',
+    }),
+    'context': <ANY>,
+    'entity_id': 'binary_sensor.kunde_example_com_ready_for_pickup',
+    'last_changed': <ANY>,
+    'last_reported': <ANY>,
+    'last_updated': <ANY>,
+    'state': 'on',
+  })
+# ---

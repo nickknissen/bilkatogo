@@ -1,5 +1,8 @@
+"""Fixtures for the BilkaToGo Home Assistant tests."""
+
 from collections.abc import Awaitable, Callable, Generator
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -16,8 +19,21 @@ from tests.fake_bilka import EMAIL, PASSWORD, FakeBilka
 
 type SetupIntegration = Callable[[], Awaitable[MockConfigEntry]]
 
+# When the Pickup Slot fixtures were captured: their slots are open after it.
+SNAPSHOT_TIME = "2026-11-08T20:00:00+01:00"
+
+
+def pack_substituted_order(bilka: FakeBilka) -> None:
+    """Make the Order with two Substitutions the only one, and Packed."""
+    order_number = "900000000001"
+    order = next(o for o in bilka.orders if o["orderId"] == order_number)
+    bilka.orders = [{**order, "status": "Pakket"}]
+    details = bilka.details[order_number]
+    bilka.details[order_number] = {**details, "order": {**details["order"], "status": "Pakket"}}
+
 
 def event_entity_id(hass: HomeAssistant, entry: MockConfigEntry, key: str) -> str:
+    """Return the entity ID of the event entity with the given key."""
     entity_id = er.async_get(hass).async_get_entity_id("event", DOMAIN, f"{entry.unique_id}_{key}")
     assert entity_id is not None
     return entity_id
@@ -39,6 +55,7 @@ def fired(state_changes: list[Event[Any]], entity_id: str) -> list[dict[str, Any
 
 @pytest.fixture
 def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """Return the snapshot assertion with Home Assistant's snapshot extension."""
     return snapshot.use_extension(HomeAssistantSnapshotExtension)
 
 
@@ -69,7 +86,17 @@ def bilka_backend(bilka: FakeBilka) -> Generator[FakeBilka]:
 
 
 @pytest.fixture
+def mock_setup_entry() -> Generator[AsyncMock]:
+    """Skip setting up the entry a config flow creates."""
+    with patch(
+        "custom_components.bilkatogo.async_setup_entry", return_value=True
+    ) as mock_setup_entry:
+        yield mock_setup_entry
+
+
+@pytest.fixture
 def config_entry(hass: HomeAssistant) -> MockConfigEntry:
+    """Return a BilkaToGo config entry for the fake account, added to Home Assistant."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         title=EMAIL,
@@ -83,6 +110,8 @@ def config_entry(hass: HomeAssistant) -> MockConfigEntry:
 
 @pytest.fixture
 def setup_integration(hass: HomeAssistant, config_entry: MockConfigEntry) -> SetupIntegration:
+    """Return a function that sets up the config entry and returns it."""
+
     async def setup() -> MockConfigEntry:
         await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()

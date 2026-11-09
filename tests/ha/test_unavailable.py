@@ -1,3 +1,5 @@
+"""Tests for entities while Bilka is unavailable."""
+
 from datetime import timedelta
 
 import httpx
@@ -23,12 +25,14 @@ FAILURES: dict[str, Scripted] = {
 
 
 async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """Move time on to the next scheduled update and wait for it to finish."""
     freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
 
 
 def order_status(hass: HomeAssistant, entry: MockConfigEntry) -> str:
+    """Return the state of the Order Status sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "sensor", DOMAIN, f"{entry.unique_id}_order_status"
     )
@@ -41,6 +45,7 @@ def order_status(hass: HomeAssistant, entry: MockConfigEntry) -> str:
 async def test_requests_wait_for_a_slow_bilka(
     setup_integration: SetupIntegration, bilka: FakeBilka
 ) -> None:
+    """Test every request to Bilka uses the library's read timeout."""
     await setup_integration()
 
     assert bilka.requests
@@ -56,6 +61,7 @@ async def test_failed_update_makes_entities_unavailable_without_reauth(
     freezer: FrozenDateTimeFactory,
     failure: Scripted,
 ) -> None:
+    """Test a failed update makes the entities unavailable without starting reauth."""
     entry = await setup_integration()
     bilka.script("order_history", failure)
 
@@ -71,6 +77,7 @@ async def test_busy_login_service_makes_entities_unavailable_without_reauth(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a rate-limited login makes the entities unavailable without starting reauth."""
     entry = await setup_integration()
     bilka.script("order_history", LOGGED_OUT)
     bilka.script(
@@ -92,6 +99,7 @@ async def test_entities_recover_on_the_next_successful_update(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test unavailable entities come back after the next successful update."""
     entry = await setup_integration()
     bilka.script("order_history", httpx.ConnectError("down"))
     await next_update(hass, freezer)

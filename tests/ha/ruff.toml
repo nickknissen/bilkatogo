@@ -1,0 +1,12 @@
+# Home Assistant core requires a docstring on every test module, test and helper, with
+# core's pydocstyle settings (#98). Everything else lints as the rest of the repo.
+extend = "../../pyproject.toml"
+# Resolve first-party packages from the repo root, as the root config does.
+src = ["../..", "../../src"]
+
+[lint]
+extend-select = ["D"]
+ignore = ["D202", "D203", "D213", "D406", "D407", "D417"]
+
+[lint.pydocstyle]
+convention = "google"

@@ -1,3 +1,5 @@
+"""Tests for reauthenticating BilkaToGo."""
+
 from datetime import timedelta
 
 import httpx
@@ -19,12 +21,14 @@ NEW_PASSWORD = "nyt-kodeord"
 
 
 async def next_update(hass: HomeAssistant, freezer: FrozenDateTimeFactory) -> None:
+    """Move time on to the next scheduled update and wait for it to finish."""
     freezer.tick(timedelta(minutes=60))
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
 
 
 def reauth_flows(hass: HomeAssistant, entry: MockConfigEntry) -> list:
+    """Return the reauth flows in progress for the config entry."""
     return [
         flow
         for flow in hass.config_entries.flow.async_progress_by_handler(DOMAIN)
@@ -34,6 +38,7 @@ def reauth_flows(hass: HomeAssistant, entry: MockConfigEntry) -> list:
 
 
 def order_status(hass: HomeAssistant, entry: MockConfigEntry) -> str:
+    """Return the state of the Order Status sensor."""
     entity_id = er.async_get(hass).async_get_entity_id(
         "sensor", DOMAIN, f"{entry.unique_id}_order_status"
     )
@@ -46,6 +51,7 @@ def order_status(hass: HomeAssistant, entry: MockConfigEntry) -> str:
 async def reauth_with(
     hass: HomeAssistant, entry: MockConfigEntry, password: str
 ) -> ConfigFlowResult:
+    """Answer the entry's reauth flow with the password and return the result."""
     [flow] = reauth_flows(hass, entry)
     return await hass.config_entries.flow.async_configure(
         flow["flow_id"], {CONF_PASSWORD: password}
@@ -53,6 +59,7 @@ async def reauth_with(
 
 
 async def change_password_at_bilka(bilka: FakeBilka) -> None:
+    """Change the password at Bilka and log the current session out."""
     bilka.password = NEW_PASSWORD
     bilka.script("order_history", httpx.Response(401, json={"code": 401, "msg": "Unauthorized"}))
 
@@ -63,6 +70,7 @@ async def test_an_expired_session_renews_from_the_login_token_without_logging_in
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test an expired session is renewed with the login token, not the password."""
     entry = await setup_integration()
 
     freezer.tick(timedelta(hours=25))
@@ -80,6 +88,7 @@ async def test_a_refused_login_token_falls_back_to_the_stored_password_without_r
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a refused login token logs in again with the stored password, without reauth."""
     entry = await setup_integration()
     bilka.script(
         "gigya_jwt",
@@ -101,6 +110,7 @@ async def test_changed_password_starts_reauth(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a changed password starts a reauth flow."""
     entry = await setup_integration()
     await change_password_at_bilka(bilka)
 
@@ -115,6 +125,7 @@ async def test_reauth_with_the_new_password_resumes_tracking(
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test reauth with the new password stores it and brings the entities back."""
     entry = await setup_integration()
     await change_password_at_bilka(bilka)
     await next_update(hass, freezer)
@@ -131,12 +142,13 @@ async def test_reauth_with_the_new_password_resumes_tracking(
     assert reauth_flows(hass, entry) == []
 
 
-async def test_reauth_with_a_wrong_password_shows_invalid_auth(
+async def test_reauth_recovers_from_a_wrong_password(
     hass: HomeAssistant,
     setup_integration: SetupIntegration,
     bilka: FakeBilka,
     freezer: FrozenDateTimeFactory,
 ) -> None:
+    """Test a wrong password in reauth shows an error and the right one then succeeds."""
     entry = await setup_integration()
     await change_password_at_bilka(bilka)
     await next_update(hass, freezer)
@@ -149,9 +161,19 @@ async def test_reauth_with_a_wrong_password_shows_invalid_auth(
     assert entry.data[CONF_PASSWORD] != NEW_PASSWORD
     assert order_status(hass, entry) == STATE_UNAVAILABLE
 
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_PASSWORD: NEW_PASSWORD}
+    )
+    await hass.async_block_till_done()
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == NEW_PASSWORD
+
 
 @pytest.mark.parametrize("language", ["en", "da"])
 async def test_reauth_texts_are_translated(hass: HomeAssistant, language: str) -> None:
+    """Test the reauth form, abort reason and auth error have texts in each language."""
     config = await async_get_translations(hass, language, "config", [DOMAIN])
     exceptions = await async_get_translations(hass, language, "exceptions", [DOMAIN])
     prefix = f"component.{DOMAIN}"
