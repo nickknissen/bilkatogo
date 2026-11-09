@@ -191,7 +191,7 @@ public pages, without logging in. It is an async context manager, like the clien
   ("Aftensmad", "aftensmad/danske-retter", "børn i køkkenet"). A category with
   sub-categories gives one Recipe from each in turn. `categories()` lists the top-level ones.
 - `recipe(recipe)` returns `RecipeDetails` for a link or path: `persons`, `time` as written
-  ("35 min"), `image`, `ingredients`, `method` (a `RecipeSection` with `title` and `steps`
+  ("35 min"), `description` (the paragraph under the title, or `None`), `image`, `ingredients`, `method` (a `RecipeSection` with `title` and `steps`
   per heading after the ingredients) and `article_numbers`, the Recipe Products in page order.
 - `BilkaToGoClient.get_recipe(recipe)` adds `products`: the Recipe Products at the Store that
   serves the Cart, through `get_products`, leaving out those the Store does not sell. To add

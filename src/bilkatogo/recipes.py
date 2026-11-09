@@ -187,6 +187,7 @@ class RecipeReader:
             url=_url(path),
             persons=persons,
             time=time,
+            description=_description(sections),
             image=_image(page),
             ingredients=ingredients,
             method=_method(sections),
@@ -390,6 +391,12 @@ def _lines(fragment: str) -> list[str]:
             if not re.fullmatch(r"\s*<strong>.*</strong>\s*", line, flags=re.DOTALL)
         ]
     return [text for line in lines if (text := _text(line))]
+
+
+def _description(sections: list[tuple[str, list[str]]]) -> str | None:
+    """The text before the first heading: the paragraph under the title."""
+    _, lines = sections[0]
+    return " ".join(lines) or None
 
 
 def _method(sections: list[tuple[str, list[str]]]) -> list[RecipeSection]:

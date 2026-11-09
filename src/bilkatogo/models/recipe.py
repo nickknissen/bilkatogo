@@ -35,6 +35,8 @@ class RecipeDetails(BilkaDataClass):
     """How many it is written for; None when the page gives no number of persons."""
     time: str | None
     """As written on the page, e.g. "35 min"."""
+    description: str | None
+    """The paragraph under the title, above the ingredients; None when the page has none."""
     image: str | None
     ingredients: list[str]
     method: list[RecipeSection]
