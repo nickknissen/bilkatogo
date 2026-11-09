@@ -9,6 +9,19 @@ Real Bilka responses, redacted (see `docs/agents/capturing.md`), except the synt
 
 ## Notes on real captures
 
+- `recipes/`: bilkatogo.dk's public Recipe pages, captured 2026-11-08 without logging in, website
+  build `1793920097` (the same build handle-mcp captured on 2026-11-06). `<name>.payload.js` is
+  `GET /_nuxt/static/1793920097/inspiration/opskrifter/<path>/payload.js` as received, for `""`
+  (`opskrifter`), `madplaner` (week 46), `aftensmad`, `aftensmad/danske-retter`,
+  `aftensmad/sandwiches-pita-og-wraps`, `aftensmad/danske-retter/karbonader` and
+  `aftensmad/pastaretter/carbonara`. `opskrifter.html` is an excerpt of
+  `GET /inspiration/opskrifter/`: only the tags naming the build. `unknown-page.html` is what
+  the site answers, byte for byte the same, both for a payload under an unknown build
+  (`/_nuxt/static/1000000000/...`) and for a page it does not have
+  (`.../aftensmad/findes-ikke/payload.js`): HTTP 200, the website's HTML naming the current
+  build in `staticAssetsBase`. The pages name the Recipes' author ("Julie Bruun"); kept, it is
+  public.
+
 - `available_delivery_dates_pickup.json`: `GET shop/v3/AvailableDeliveryDates` through the
   library's session on Sunday 2026-11-08 at about 20:00, the Cart at Bilka Vejle with the slot
   Wed 11/11 14:00-16:00 chosen (#73). Redacted with `redact` and trimmed to Sun 8 to Tue 10.

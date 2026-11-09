@@ -33,7 +33,21 @@ bilkatogo cart add-items 18381:10 19753 140787:2   # add several; 19753 gets --q
 bilkatogo cart set 18381 5      # hold exactly 5
 bilkatogo cart remove 18381 --quantity 2   # take 2 off the Cart Line
 bilkatogo cart remove 18381     # take it out of the Cart
+bilkatogo recipes               # this week's Madplan: day, Recipe and its path
+bilkatogo recipes list aftensmad --limit 10        # the Recipes in a category
+bilkatogo recipes show aftensmad/danske-retter/karbonader   # ingredients, method, Products with Price and stock
+bilkatogo recipes add aftensmad/danske-retter/karbonader    # asks, then adds one of each Product
 ```
+
+`recipes` and `recipes list` read bilkatogo.dk's public Recipe pages without logging in; a
+category is a name or path, e.g. `aftensmad`, `aftensmad/danske-retter` or "børn i køkkenet".
+`recipes show` and `add` take the Recipe's link or path and log in for the Prices at your
+Cart's Store. `recipes add` lists the Products your Store sells and asks "Add N Products to the
+Cart? [y/N]" before adding one of each, the one command that asks, because it adds many Cart
+Lines at once; `--yes` skips the question and `--json` needs it. Products your Store does not
+sell are named and left out. The Recipe pages are Bilka's website, not an API: when it
+changes, these commands fail with "bilkatogo.dk's recipe pages have changed" and the rest keep
+working.
 
 `cart add`, `set` and `remove` change the Cart without asking and print the updated Cart and any
 warning from Bilka. When Bilka applies a different quantity than asked they print Bilka's

@@ -17,6 +17,9 @@ from .order_details import Substitution as Substitution
 from .product import Offer as Offer
 from .product import Product as Product
 from .product import SearchSort as SearchSort
+from .recipe import Recipe as Recipe
+from .recipe import RecipeDetails as RecipeDetails
+from .recipe import RecipeSection as RecipeSection
 from .slots import AvailablePickupSlot as AvailablePickupSlot
 from .slots import PickupSlots as PickupSlots
 from .slots import SlotAvailability as SlotAvailability

@@ -59,5 +59,33 @@ class CartChangeRejectedError(BilkaToGoError):
         self.applied = applied
 
 
+class WebsiteChangedError(BilkaToGoError):
+    """bilkatogo.dk's recipe pages are not in the format the recipes module reads; only
+    recipes are affected. Report it, with the bilkatogo version."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(f"bilkatogo.dk's recipe pages have changed ({detail})")
+
+
+class UnknownRecipeError(BilkaToGoError):
+    """bilkatogo.dk has no recipe at the given path."""
+
+    def __init__(self, recipe: str, categories: list[str]) -> None:
+        hint = f"; categories: {', '.join(categories)}" if categories else ""
+        super().__init__(f"No recipe {recipe!r} on bilkatogo.dk{hint}")
+        self.recipe = recipe
+        self.categories = categories
+
+
+class UnknownCategoryError(BilkaToGoError):
+    """bilkatogo.dk has no recipe category at the given path."""
+
+    def __init__(self, category: str, categories: list[str]) -> None:
+        hint = f"; categories: {', '.join(categories)}" if categories else ""
+        super().__init__(f"No recipe category {category!r} on bilkatogo.dk{hint}")
+        self.category = category
+        self.categories = categories
+
+
 class UnexpectedResponseError(BilkaToGoError):
     """Bilka answered with something the client does not understand. Retry later."""

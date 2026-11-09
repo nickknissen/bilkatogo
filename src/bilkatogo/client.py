@@ -55,6 +55,7 @@ from .models import (
     PickupPoint,
     PickupSlots,
     Product,
+    RecipeDetails,
     SearchSort,
 )
 from .models.cart import cart_pickup_point, cart_store_id
@@ -462,6 +463,18 @@ class BilkaToGoClient:
         )
         by_number = {product.article_number: product for product in products}
         return [by_number[number] for number in wanted if number in by_number]
+
+    async def get_recipe(self, recipe: str) -> RecipeDetails:
+        """A Recipe from bilkatogo.dk with its Recipe Products at the Store that serves the
+        Cart, in page order; Products the Store does not sell are left out. To add them, pass
+        `{product.article_number: 1 for product in recipe.products}` to `add_items_to_cart`."""
+        # The recipes module stays apart: a change to the website breaks only recipes (ADR 0007).
+        from .recipes import RecipeReader
+
+        async with RecipeReader(httpx_client=self._http) as reader:
+            details = await reader.recipe(recipe)
+        details.products = await self.get_products(details.article_numbers)
+        return details
 
     async def _store_id(self, pickup_point: str | None) -> str:
         """The Store of the named Pickup Point, or else the one that serves the Cart."""

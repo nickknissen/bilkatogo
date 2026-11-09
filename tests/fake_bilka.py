@@ -1,9 +1,10 @@
+import asyncio
 import copy
 import json
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, parse_qsl
 
 import httpx
@@ -47,6 +48,20 @@ ROUTES: dict[tuple[str, str], str] = {
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/ChangeLineCount"): "change_line_count",
     ("GET", "https://api.bilkatogo.dk/api/shop/v6/EmptyCart"): "empty_cart",
     ("POST", "https://f9vbjlr1bk-dsn.algolia.net/1/indexes/*/queries"): "algolia",
+}
+
+WEBSITE_HOST = "www.bilkatogo.dk"
+RECIPE_FIXTURES = FIXTURES / "recipes"
+# The website's build when the recipe pages were captured.
+RECIPES_BUILD = "1793920097"
+RECIPE_PAGES = {
+    "": "opskrifter",
+    "madplaner": "madplaner",
+    "aftensmad": "aftensmad",
+    "aftensmad/danske-retter": "danske-retter",
+    "aftensmad/danske-retter/karbonader": "karbonader",
+    "aftensmad/pastaretter/carbonara": "carbonara",
+    "aftensmad/sandwiches-pita-og-wraps": "sandwiches-pita-og-wraps",
 }
 
 type Handler = Callable[[httpx.Request], httpx.Response]
@@ -108,14 +123,21 @@ class FakeBilka:
         self.products: list[dict[str, Any]] = load_fixture("algolia_products.json")["hits"]
         self.change_answer: dict[str, Any] = load_fixture("change_line_count.json")
         self.max_quantity: int | None = None
+        self.build = RECIPES_BUILD
+        self.recipe_pages: dict[str, str] = dict(RECIPE_PAGES)
+        self.missing_recipe_pages: set[str] = set()
+        self.pages_in_flight = 0
+        self.most_pages_in_flight = 0
         self._scripts: dict[str, deque[Scripted]] = defaultdict(deque)
-        self.transport = httpx.MockTransport(self._handle)
+        # The website's handler is a coroutine, which MockTransport awaits when used by an
+        # AsyncClient; every other route answers at once, also for sync callers (tests/ha).
+        self.transport = httpx.MockTransport(cast("Handler", self._handle))
 
     def client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(transport=self.transport)
 
     def script(self, route: str, *responses: Scripted) -> None:
-        if route not in ROUTES.values():
+        if route not in {*ROUTES.values(), "website"}:
             raise ValueError(f"Unknown route {route!r}")
         self._scripts[route].extend(responses)
 
@@ -123,10 +145,12 @@ class FakeBilka:
         return [r for r in self.requests if self._route_of(r) == route]
 
     def _route_of(self, request: httpx.Request) -> str | None:
+        if request.method == "GET" and request.url.host == WEBSITE_HOST:
+            return "website"
         url = request.url.copy_with(query=None)
         return ROUTES.get((request.method, str(url)))
 
-    def _handle(self, request: httpx.Request) -> httpx.Response:
+    def _handle(self, request: httpx.Request) -> httpx.Response | Awaitable[httpx.Response]:
         self.requests.append(request)
         route = self._route_of(request)
         if route is None:
@@ -258,6 +282,45 @@ class FakeBilka:
             group for group in self.cart_contents["lines"] if group["headline"] in FEE_GROUPS
         ]
         return httpx.Response(200, json={**self.cart_contents, "uid": UID})
+
+    async def website(self, request: httpx.Request) -> httpx.Response:
+        """bilkatogo.dk: the recipes page's HTML with the build id, and each page's
+        payload.js under that build. Anything else answers like the real site, with HTTP 200
+        and the website's HTML naming the current build: a page it does not know and a
+        payload under an old build alike (captured 2026-11-08)."""
+        self.pages_in_flight += 1
+        self.most_pages_in_flight = max(self.most_pages_in_flight, self.pages_in_flight)
+        try:
+            for _ in range(3):  # let other reads start, to count how many run at once
+                await asyncio.sleep(0)
+            path = request.url.path
+            if path == "/inspiration/opskrifter/":
+                return httpx.Response(200, text=self._website_html("opskrifter.html"))
+            prefix = f"/_nuxt/static/{self.build}/inspiration/opskrifter"
+            if path.startswith(prefix) and path.endswith("/payload.js"):
+                page = path.removeprefix(prefix).removesuffix("/payload.js").strip("/")
+                if name := self._recipe_page(page):
+                    payload = (RECIPE_FIXTURES / f"{name}.payload.js").read_text(encoding="utf-8")
+                    return httpx.Response(200, text=payload)
+            return httpx.Response(200, text=self._website_html("unknown-page.html"))
+        finally:
+            self.pages_in_flight -= 1
+
+    def _recipe_page(self, page: str) -> str | None:
+        """The fixture for a recipe page. The categories below aftensmad that were not
+        captured answer with a captured one: a sub-category with Danish dishes, a recipe with
+        karbonader."""
+        if page in self.missing_recipe_pages:
+            return None
+        if page in self.recipe_pages:
+            return self.recipe_pages[page]
+        if page.startswith("aftensmad/"):
+            return "danske-retter" if page.count("/") == 1 else "karbonader"
+        return None
+
+    def _website_html(self, name: str) -> str:
+        html = (RECIPE_FIXTURES / name).read_text(encoding="utf-8")
+        return html.replace(RECIPES_BUILD, self.build)
 
     def algolia(self, request: httpx.Request) -> httpx.Response:
         if (

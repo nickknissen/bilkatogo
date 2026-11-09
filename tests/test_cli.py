@@ -1211,3 +1211,135 @@ def test_pickup_slots_json(
     assert slots["next_open"] == slots["slots"][1]
     assert slots["chosen"] == {"date": "2026-11-11", "start": "15:00:00", "end": "22:00:00"}
     assert (slots["pickup_point"], slots["home_delivery"]) == (None, True)
+
+
+def test_recipes_shows_this_weeks_madplan_without_logging_in(invoke, bilka: FakeBilka) -> None:
+    result = invoke("recipes")
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0] == "Madplan til uge 46"
+    assert lines[1].split() == ["Day", "Recipe", "Path"]
+    assert lines[2].split() == [
+        "Mon",
+        "Cowboy",
+        "toast",
+        "aftensmad/sandwiches-pita-og-wraps/sandwiches/cowboy-toast",
+    ]
+    assert lines[8].split()[:2] == ["Sun", "Minestronesuppe"]
+    assert bilka.calls("gigya_login") == []
+
+
+def test_recipes_list_shows_a_category(invoke, bilka: FakeBilka) -> None:
+    result = invoke("recipes", "list", "aftensmad/danske-retter", "--limit", "3")
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].split() == ["Recipe", "Group", "Path"]
+    assert lines[3].split() == [
+        "Karbonader",
+        "Dansk",
+        "inspirerede",
+        "retter",
+        "aftensmad/danske-retter/karbonader",
+    ]
+    assert len(lines) == 4
+
+
+def test_recipes_list_of_an_unknown_category_names_the_real_ones(invoke) -> None:
+    result = invoke("recipes", "list", "pandekager")
+
+    assert result.exit_code == 1
+    assert "No recipe category 'pandekager'" in result.output
+    assert "aftensmad, frokost" in result.output
+
+
+def test_recipes_json(invoke) -> None:
+    result = invoke("recipes", "--json")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)[1] == {
+        "id": "aftensmad/pastaretter/carbonara",
+        "name": "Carbonara",
+        "url": "https://www.bilkatogo.dk/inspiration/opskrifter/aftensmad/pastaretter/carbonara/",
+        "group": "Madplan til uge 46",
+    }
+
+
+CARBONARA = "aftensmad/pastaretter/carbonara"
+
+
+@pytest.fixture
+def carbonara_sold(logged_in_cart: FakeBilka) -> FakeBilka:
+    """Two of the carbonara's Products sold at the Cart's Store: Bananer and Skyr renamed."""
+    for hit, number in zip(logged_in_cart.products[1:3], ["81422", "128254"], strict=True):
+        hit["objectID"] = number
+    return logged_in_cart
+
+
+def test_recipes_show_prints_the_recipe_and_its_products_at_the_store(
+    invoke, carbonara_sold: FakeBilka
+) -> None:
+    result = invoke("recipes", "show", CARBONARA, "--email", EMAIL, "--password", PASSWORD)
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[:4] == [
+        "Recipe   Carbonara",
+        f"Link     https://www.bilkatogo.dk/inspiration/opskrifter/{CARBONARA}/",
+        "Persons  4",
+        "Time     20 min",
+    ]
+    assert "Ingredients" in lines
+    assert "Fremgangsmåde" in lines
+    products = lines[lines.index("") + 1 :]
+    assert products[0].split()[:2] == ["Article", "Product"]
+    assert [line.split()[0] for line in products[1:3]] == ["128254", "81422"]
+    assert products[-1] == "Not sold at your Store: 166050, 125823, 170956, 16868, 93861"
+
+
+def test_recipes_add_asks_before_adding_the_products_the_store_sells(
+    invoke, carbonara_sold: FakeBilka
+) -> None:
+    result = invoke(
+        "recipes", "add", CARBONARA, "--email", EMAIL, "--password", PASSWORD, input="y\n"
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Add 2 Products to the Cart? [y/N]" in result.output
+    added = [
+        request.url.params["productId"] for request in carbonara_sold.calls("change_line_count")
+    ]
+    assert added == ["128254", "81422"]
+    assert "applied" in result.output
+
+
+def test_recipes_add_answered_no_changes_nothing(invoke, carbonara_sold: FakeBilka) -> None:
+    result = invoke(
+        "recipes", "add", CARBONARA, "--email", EMAIL, "--password", PASSWORD, input="n\n"
+    )
+
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[-1] == "Nothing added."
+    assert carbonara_sold.calls("change_line_count") == []
+
+
+def test_recipes_add_with_yes_does_not_ask(invoke, carbonara_sold: FakeBilka) -> None:
+    result = invoke(
+        "recipes", "add", CARBONARA, "--yes", "--json", "--email", EMAIL, "--password", PASSWORD
+    )
+
+    assert result.exit_code == 0, result.output
+    changes = json.loads(result.output)["changes"]
+    assert [(change["article_number"], change["status"]) for change in changes] == [
+        ("128254", "applied"),
+        ("81422", "applied"),
+    ]
+
+
+def test_recipes_add_json_needs_yes(invoke, bilka: FakeBilka) -> None:
+    result = invoke("recipes", "add", CARBONARA, "--json")
+
+    assert result.exit_code == 1
+    assert "--json needs --yes" in result.output
+    assert bilka.requests == []

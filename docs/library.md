@@ -57,7 +57,8 @@ asyncio.run(main())
   log in again with your password"). Treat the session file like the password.
 - Errors derive from `BilkaToGoError`: `InvalidCredentialsError`, `BilkaUnreachableError`,
   `BilkaBusyError`, `UnexpectedResponseError`, `OrderNotFoundError`, `UnknownPickupPointError`,
-  `NoPickupPointError` and `CartChangeRejectedError`. `BilkaBusyError` means Bilka or its
+  `NoPickupPointError`, `CartChangeRejectedError` and, for Recipes, `WebsiteChangedError`,
+  `UnknownRecipeError` and `UnknownCategoryError`. `BilkaBusyError` means Bilka or its
   login service is rate limiting or failing for now (HTTP 429 or 5xx from the shop, Gigya error
   403048 or 500000 and up): try again later; the credentials are not at fault.
 - `search(text, pickup_point=None, limit=20, ...)` finds Products at the Store of a Pickup
@@ -128,3 +129,26 @@ asyncio.run(main())
   7 days. Check the Cart after logging in there if you changed it from here.
 - `get_cart_json()`, `get_order_json(order)`, `get_current_order_json()` and
   `get_pickup_slots_json()` return Bilka's answer untouched; `bilkatogo.redact.redact()` replaces the personal data in it.
+
+## Recipes
+
+`bilkatogo.recipes.RecipeReader(httpx_client=None)` reads Bilka's Recipes from bilkatogo.dk's
+public pages, without logging in. It is an async context manager, like the client.
+
+- `madplan()` returns this week's Madplan, seven `Recipe`s from Monday to Sunday, each with its
+  `id` (the path below /inspiration/opskrifter/, e.g. "aftensmad/pastaretter/carbonara"),
+  `name`, `url` and `group` (the heading it sat under, "Madplan til uge 46").
+- `category(category, limit=20)` returns a category's Recipes; `category` is a name or path
+  ("Aftensmad", "aftensmad/danske-retter", "børn i køkkenet"). A category with
+  sub-categories gives one Recipe from each in turn. `categories()` lists the top-level ones.
+- `recipe(recipe)` returns `RecipeDetails` for a link or path: `persons`, `time` as written
+  ("35 min"), `image`, `ingredients`, `method` (a `RecipeSection` with `title` and `steps`
+  per heading after the ingredients) and `article_numbers`, the Recipe Products in page order.
+- `BilkaToGoClient.get_recipe(recipe)` adds `products`: the Recipe Products at the Store that
+  serves the Cart, through `get_products`, leaving out those the Store does not sell. To add
+  them, pass `{product.article_number: 1 for product in recipe.products}` to
+  `add_items_to_cart`; the library has no call that adds a Recipe on its own.
+- The pages are Bilka's website, not an API (ADR 0007). When their format changes the reader
+  raises `WebsiteChangedError`; an unknown path raises `UnknownRecipeError` or
+  `UnknownCategoryError`, naming the top-level categories. Nothing else in the library depends
+  on them. At most 5 pages are read at once.
