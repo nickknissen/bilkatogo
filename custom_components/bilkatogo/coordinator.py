@@ -1,12 +1,8 @@
+"""Poll Bilka for the Current Order, its details and the Pickup Slots."""
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from homeassistant.util import dt as dt_util
 
 from bilkatogo import (
     BilkaToGoClient,
@@ -18,17 +14,35 @@ from bilkatogo import (
     PickupSlots,
 )
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
+
 from .announcer import announcers
-from .const import DOMAIN, FAST_UPDATE_INTERVAL, FAST_UPDATE_LEAD_TIME, LOGGER, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    FAST_UPDATE_INTERVAL,
+    FAST_UPDATE_LEAD_TIME,
+    LOGGER,
+    UPDATE_INTERVAL,
+)
 
 DETAILS_STATUSES = frozenset(
-    {OrderStatus.PACKED, OrderStatus.NOT_COLLECTED, OrderStatus.CANCELLED, OrderStatus.SOLD_OUT}
+    {
+        OrderStatus.PACKED,
+        OrderStatus.NOT_COLLECTED,
+        OrderStatus.CANCELLED,
+        OrderStatus.SOLD_OUT,
+    }
 )
 
 type BilkaToGoConfigEntry = ConfigEntry[BilkaToGoCoordinator]
 
 
 def polling_interval(order: Order | None, now: datetime) -> timedelta:
+    """Return the wait before the next poll: shorter close to the Order's Pickup Slot."""
     if order is None or order.pickup_slot is None or order.finished:
         return UPDATE_INTERVAL
     # Subtract `now` first: a Copenhagen time minus a timedelta is wall-clock arithmetic,
@@ -40,8 +54,10 @@ def polling_interval(order: Order | None, now: datetime) -> timedelta:
 
 
 def backoff_interval(interval: timedelta, failures: int) -> timedelta:
-    """The wait before the next poll after `failures` failed updates in a row: `interval`
-    doubled per failure, never more than the normal interval."""
+    """Return the wait before the next poll after `failures` failed updates in a row.
+
+    That is `interval` doubled per failure, never more than the normal interval.
+    """
     # Doubles one failure at a time: 2**failures would overflow a timedelta in a long outage.
     for _ in range(failures):
         interval *= 2
@@ -52,6 +68,8 @@ def backoff_interval(interval: timedelta, failures: int) -> timedelta:
 
 @dataclass
 class BilkaToGoData:
+    """What one update fetched from Bilka."""
+
     order: Order | None
     details: OrderDetails | None = None
     orders: list[Order] = field(default_factory=list)
@@ -62,11 +80,14 @@ class BilkaToGoData:
 
 
 class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
+    """Poll one account, faster as its Current Order's Pickup Slot nears."""
+
     config_entry: BilkaToGoConfigEntry
 
     def __init__(
         self, hass: HomeAssistant, entry: BilkaToGoConfigEntry, client: BilkaToGoClient
     ) -> None:
+        """Poll the account through `client`."""
         super().__init__(
             hass,
             LOGGER,
@@ -113,7 +134,9 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
         announced = {}
         if details:
             for announcer in self.announcers:
-                announced[announcer.event_type] = await announcer.async_announce(details)
+                announced[announcer.event_type] = await announcer.async_announce(
+                    details
+                )
         return BilkaToGoData(
             order=order,
             details=details,
@@ -123,8 +146,11 @@ class BilkaToGoCoordinator(DataUpdateCoordinator[BilkaToGoData]):
         )
 
     async def _async_fetch_pickup_slots(self) -> PickupSlots | None:
-        """The coming Pickup Slots for the Cart; None when Bilka fails to answer for them, so
-        that this never fails the update of the Order."""
+        """Fetch the coming Pickup Slots for the Cart.
+
+        Returns None when Bilka fails to answer for them, so that this never fails the
+        update of the Order.
+        """
         try:
             return await self.client.get_pickup_slots()
         except BilkaToGoError as err:

@@ -1,3 +1,5 @@
+"""Diagnostics for BilkaToGo, with personal data redacted."""
+
 import dataclasses
 from datetime import date
 from typing import Any
@@ -62,7 +64,9 @@ def _redact_path(node: Any, path: tuple[str, ...]) -> None:
         node[head] = REDACTED
 
 
-def _redact_paths(data: dict[str, Any], paths: tuple[tuple[str, ...], ...]) -> dict[str, Any]:
+def _redact_paths(
+    data: dict[str, Any], paths: tuple[tuple[str, ...], ...]
+) -> dict[str, Any]:
     for path in paths:
         _redact_path(data, path)
     return data
@@ -86,8 +90,11 @@ def _label_order_numbers(node: Any, labels: dict[str, str]) -> None:
 
 
 def _text_keys(node: Any) -> Any:
-    """Diagnostics are written as JSON, whose keys must be text; `days_without_slots` is keyed
-    by date."""
+    """Turn date keys into text.
+
+    Diagnostics are written as JSON, whose keys must be text; `days_without_slots` is
+    keyed by date.
+    """
     if isinstance(node, list):
         return [_text_keys(item) for item in node]
     if isinstance(node, dict):
@@ -101,6 +108,7 @@ def _text_keys(node: Any) -> Any:
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: BilkaToGoConfigEntry
 ) -> dict[str, Any]:
+    """Return the entry and the latest data, without personal data."""
     data = entry.runtime_data.data
     diagnostics = async_redact_data(
         {

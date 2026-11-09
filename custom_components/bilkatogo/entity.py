@@ -1,8 +1,10 @@
+"""Base entity for BilkaToGo."""
+
+from bilkatogo import OrderStatus
+
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-
-from bilkatogo import OrderStatus
 
 from .const import DOMAIN, WEBSITE_URL
 from .coordinator import BilkaToGoConfigEntry, BilkaToGoCoordinator
@@ -11,6 +13,7 @@ UNRECOGNIZED_STATUS = "unrecognized"
 
 
 def status_option(status: OrderStatus) -> str:
+    """Return the Order Status sensor's option for `status`."""
     return UNRECOGNIZED_STATUS if status is OrderStatus.UNKNOWN else status.value
 
 
@@ -24,9 +27,14 @@ def account_id(entry: BilkaToGoConfigEntry) -> str:
 
 
 class BilkaToGoEntity(CoordinatorEntity[BilkaToGoCoordinator]):
+    """An entity on the account's device."""
+
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: BilkaToGoCoordinator, description: EntityDescription) -> None:
+    def __init__(
+        self, coordinator: BilkaToGoCoordinator, description: EntityDescription
+    ) -> None:
+        """Key the entity on the account and the description's key."""
         super().__init__(coordinator)
         self.entity_description = description
         entry = coordinator.config_entry
