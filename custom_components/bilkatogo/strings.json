@@ -227,7 +227,7 @@
       "message": "Bilka did not change the cart: {error}"
     },
     "no_pickup_point": {
-      "message": "Your cart has no pickup point or home delivery address. Choose one with the Choose pickup point action or on bilkatogo.dk first."
+      "message": "Your cart has neither a pickup point nor home delivery. Choose a pickup point with the Choose pickup point action, or either on bilkatogo.dk, first."
     },
     "action_failed": {
       "message": "Bilka could not complete the action: {error}"

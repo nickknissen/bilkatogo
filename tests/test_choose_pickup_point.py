@@ -147,6 +147,29 @@ async def test_a_place_bilka_does_not_know_raises_with_bilkas_message(
 
 
 @pytest.mark.asyncio
+async def test_another_refusal_is_not_taken_for_an_unknown_place(
+    home_delivery_cart: FakeBilka,
+) -> None:
+    # Bilka's website names `eid` 428, BLOCKED_PRODUCTS, but it was never seen (#89).
+    blocked = {"msg": "Varerne kan ikke leveres", "code": "BLOCKED_PRODUCTS", "eid": 428}
+    async with (
+        home_delivery_cart.client() as http,
+        BilkaToGoClient(EMAIL, PASSWORD, httpx_client=http) as client,
+    ):
+        home_delivery_cart.script("set_delivery_address", blocked)
+        with pytest.raises(UnexpectedResponseError, match="Varerne kan ikke leveres") as caught:
+            await client.choose_pickup_point("Bilka Kolding")
+        home_delivery_cart.cart_contents["deliveryAddress"] = load_fixture("cart.json")[
+            "deliveryAddress"
+        ]
+        home_delivery_cart.script("set_delivery_address", blocked)
+        with pytest.raises(UnexpectedResponseError, match="Varerne kan ikke leveres"):
+            await client.choose_home_delivery()
+
+    assert not isinstance(caught.value, UnknownPickupPointError)
+
+
+@pytest.mark.asyncio
 async def test_the_carts_own_pickup_point_is_reported_unchanged_without_sending_anything(
     logged_in_cart: FakeBilka,
 ) -> None:

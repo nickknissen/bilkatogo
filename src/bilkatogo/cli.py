@@ -444,6 +444,14 @@ async def pickup_points_choose(
     print_delivery_change(change)
 
 
+CHANGED_AMOUNTS: list[tuple[str, Callable[[Cart], Decimal]]] = [
+    ("Cart Total", lambda cart: cart.total),
+    ("Service Fee", lambda cart: cart.service_fee),
+    ("Packaging", lambda cart: cart.packaging),
+    ("Delivery Fee", lambda cart: cart.delivery_fee),
+]
+
+
 def print_delivery_change(change: DeliveryChange) -> None:
     """The move as before -> after, then warnings for what needs fixing before ordering. Never
     the Home Address: the Cart has only "Home Delivery" for it."""
@@ -455,16 +463,9 @@ def print_delivery_change(change: DeliveryChange) -> None:
     fields = [
         ("Moved", f"{format_point(before.pickup_point, before.home_delivery)} -> {place}"),
         ("Store", f"{before.store_id or ''} -> {after.store_id or ''}"),
-        ("Cart Total", f"{format_amount(before.total)} -> {format_amount(after.total)}"),
-        (
-            "Service Fee",
-            f"{format_amount(before.service_fee)} -> {format_amount(after.service_fee)}",
-        ),
-        ("Packaging", f"{format_amount(before.packaging)} -> {format_amount(after.packaging)}"),
-        (
-            "Delivery Fee",
-            f"{format_amount(before.delivery_fee)} -> {format_amount(after.delivery_fee)}",
-        ),
+    ] + [
+        (label, f"{format_amount(amount(before))} -> {format_amount(amount(after))}")
+        for label, amount in CHANGED_AMOUNTS
     ]
     if after.minimum_order is not None:
         fields.append(("Minimum Order", format_amount(after.minimum_order)))

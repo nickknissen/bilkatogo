@@ -1,7 +1,7 @@
 import re
 from typing import Any
 
-from .models.cart import HOME_ADDRESS_FACILITY
+from .models.cart import is_home_delivery
 
 NAME = "Kunde Eksempel"
 EMAIL = "kunde@example.com"
@@ -111,11 +111,7 @@ def _is_home_address(data: dict[str, Any]) -> bool:
     a Home Address by `facility` 8, a `recipient_name` or a `dawa_uid`."""
     if "home_delivery" in data:
         return bool(data["home_delivery"])
-    return bool(
-        data.get("facility") == HOME_ADDRESS_FACILITY
-        or data.get("recipient_name")
-        or data.get("dawa_uid")
-    )
+    return is_home_delivery(data)
 
 
 def _replace_in_text(data: Any, replaced: dict[str, str]) -> Any:

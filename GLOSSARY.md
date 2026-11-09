@@ -43,7 +43,7 @@ The date and time window in which the Order is collected or delivered, e.g. Tues
 _Avoid_: Delivery interval, time slot, delivery date, booked slot
 
 **Slot Availability**:
-Whether a Pickup Slot can still be chosen: open, closed (its order deadline passed, or Bilka closed it otherwise), or sold out. Bilka's `availability_bit`, `closed` and `closed_text` on each day and interval of `AvailableDeliveryDates` (ADR 0006).
+Whether a Pickup Slot can still be chosen: open, closed (its order deadline passed, or Bilka closed it otherwise), or sold out. Bilka's `availability_bit`, `closed` and `closed_text` on each day and interval of `AvailableDeliveryDates` (ADR 0006). For the slot chosen in the Cart, its `deliveryDate.closed`, which Bilka sets when the Cart moves to a place that does not offer it (ADR 0009).
 _Avoid_: Capacity, free slot
 
 **Pickup Point**:

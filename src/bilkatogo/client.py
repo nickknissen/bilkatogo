@@ -33,6 +33,7 @@ from .const import (
     REQUEST_TIMEOUT_SECONDS,
     SEARCH_LIMIT,
     SESSION_VERSION,
+    UNKNOWN_PLACE_EID,
     WEB_PARAMS,
 )
 from .exceptions import (
@@ -146,9 +147,10 @@ class _GigyaRefusedError(UnexpectedResponseError):
 class _ShopRefusedError(UnexpectedResponseError):
     """Bilka answered a shop call with an error body other than an expired session."""
 
-    def __init__(self, path: str, reason: str) -> None:
+    def __init__(self, path: str, reason: str, eid: Any = None) -> None:
         super().__init__(f"{path}: {reason}")
         self.reason = reason
+        self.eid = eid
 
 
 class BilkaToGoClient:
@@ -406,8 +408,11 @@ class BilkaToGoClient:
             )
         except _ShopRefusedError as err:
             # A place Bilka does not know: `eid` 406, "Udleveringsstedet kunne ikke findes", and
-            # the Cart stays where it was (captured 2026-11-09).
-            raise refused(err.reason) from err
+            # the Cart stays where it was (captured 2026-11-09). Any other refusal, e.g. the
+            # website's BLOCKED_PRODUCTS (428, never seen), is raised with Bilka's message.
+            if err.eid == UNKNOWN_PLACE_EID:
+                raise refused(err.reason) from err
+            raise
         message = f": {answer['msg']}" if answer.get("msg") else ""
         if answer.get("eid") != -1:
             raise UnexpectedResponseError(f"SetDeliveryAddress answered without eid -1{message}")
@@ -727,7 +732,7 @@ class BilkaToGoClient:
             reason = f": {data['msg']}" if data is not None else ""
             raise UnexpectedResponseError(f"{path} rejected a fresh session{reason}")
         if _is_error_body(data):
-            raise _ShopRefusedError(path, data["msg"])
+            raise _ShopRefusedError(path, data["msg"], data.get("eid"))
         return data
 
     async def _shop_request(

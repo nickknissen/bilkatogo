@@ -227,7 +227,7 @@
       "message": "Bilka ændrede ikke kurven: {error}"
     },
     "no_pickup_point": {
-      "message": "Din kurv har hverken et afhentningssted eller en leveringsadresse. Vælg først en af dem med handlingen Vælg afhentningssted eller på bilkatogo.dk."
+      "message": "Din kurv har hverken et afhentningssted eller hjemmelevering. Vælg først et afhentningssted med handlingen Vælg afhentningssted, eller en af dem på bilkatogo.dk."
     },
     "action_failed": {
       "message": "Bilka kunne ikke gennemføre handlingen: {error}"
